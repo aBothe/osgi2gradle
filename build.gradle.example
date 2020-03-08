@@ -1,0 +1,23 @@
+
+subprojects {
+
+  repositories {
+    mavenCentral()
+  }
+
+  apply plugin: 'java'
+  
+  sourceSets {
+	main {
+		java {
+		    srcDir 'src'
+		}
+	}
+  }
+  
+  dependencies {
+		implementation group: 'org.osgi', name: 'osgi.core', version: '7.0.0'
+	}
+}
+
+apply from: 'subprojects.gradle'
