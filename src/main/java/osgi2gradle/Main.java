@@ -55,12 +55,17 @@ public class Main {
                 }
                 if (bundleProperties.containsKey("bin.includes")){
                     projectsGradleWriter
-                            .append("\tsourceSets.main.resources.includes = [")
+                            .append("\tsourceSets.main.resources {\r\n")
+                            .append("\t\tsrcDirs = ['.']\r\n")
+                            .append("\t\tincludes += [")
                             .append(Arrays
                                     .stream(bundleProperties.getProperty("bin.includes").split(","))
+                                    .map(String::trim)
+                                    .filter(include -> !".".equals(include))
                                     .map(source -> "'" + source + "'")
                                     .collect(Collectors.joining(",")))
-                            .append("]\r\n");
+                            .append("]\r\n")
+                            .append("\t}\r\n");
                 }
 
                 var manifest = getBundleManifest(bundle);
