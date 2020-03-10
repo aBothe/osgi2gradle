@@ -11,9 +11,9 @@ import java.util.stream.Collectors;
 public class Main {
 
     private static class EclipseBundle {
-        public Path buildPropertiesPath;
-        public Path relativePath;
-        public String gradleSubprojectName;
+        Path buildPropertiesPath;
+        Path relativePath;
+        String gradleSubprojectName;
     }
 
     public static void main(String[] args) throws Exception {
@@ -30,13 +30,13 @@ public class Main {
                 })
                 .collect(Collectors.toList());
 
-        makeProjectsGradle(subProjectPaths);
-        makeSettingsGradle(subProjectPaths);
+        makeProjectsGradle(subProjectPaths, projectRootPath.resolve("subprojects.gradle"));
+        makeSettingsGradle(subProjectPaths, projectRootPath.resolve("settings.gradle"));
     }
 
-    private static void makeProjectsGradle(List<EclipseBundle> eclipseBundles) throws Exception {
+    private static void makeProjectsGradle(List<EclipseBundle> eclipseBundles, Path toGradleFile) throws Exception {
         var availableProjects = extractProjectNames(eclipseBundles);
-        try (var projectsGradle = new FileOutputStream("subprojects.gradle");
+        try (var projectsGradle = new FileOutputStream(toGradleFile.toFile());
              var projectsGradleWriter = new OutputStreamWriter(projectsGradle)) {
             for (var bundle : eclipseBundles) {
                 projectsGradleWriter
@@ -88,8 +88,8 @@ public class Main {
                 .collect(Collectors.toList());
     }
 
-    private static void makeSettingsGradle(List<EclipseBundle> subProjectPaths) throws IOException {
-        try (var settingsGradleOS = new FileOutputStream("settings.gradle");
+    private static void makeSettingsGradle(List<EclipseBundle> subProjectPaths, Path settingsFile) throws IOException {
+        try (var settingsGradleOS = new FileOutputStream(settingsFile.toFile());
              var settingsGradleWriter = new OutputStreamWriter(settingsGradleOS)) {
             subProjectPaths.forEach(eclipseBundle ->
             {
