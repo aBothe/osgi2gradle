@@ -1,23 +1,24 @@
-
 subprojects {
 
-  repositories {
-    mavenCentral()
-  }
+    repositories {
+        mavenCentral()
+    }
 
-  apply plugin: 'java'
-  
-  sourceSets {
-	main {
-		java {
-		    srcDir 'src'
-		}
-	}
-  }
-  
-  dependencies {
-		implementation group: 'org.osgi', name: 'osgi.core', version: '7.0.0'
-	}
+    apply plugin: 'java'
+
+    dependencies {
+        implementation group: 'org.osgi', name: 'osgi.core', version: '7.0.0'
+    }
+
+    jar {
+        onlyIf { !compileJava.source.empty }
+        manifest { // https://stackoverflow.com/questions/26636534/gradle-manifest-mf
+            def manif = "${projectDir}/META-INF/MANIFEST.MF"
+            if (new File(manif).exists()) {
+                from(manif)
+            }
+        }
+    }
 }
 
 apply from: 'subprojects.gradle'
