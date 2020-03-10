@@ -2,7 +2,9 @@ package osgi2gradle;
 
 import java.io.*;
 import java.nio.file.*;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Properties;
 import java.util.Scanner;
 import java.util.jar.Manifest;
 import java.util.regex.Pattern;
@@ -40,6 +42,30 @@ public class Main {
             for (var bundle : eclipseBundles) {
                 declareProjectHead(projectsGradleWriter, bundle);
 
+                var bundleProperties = new Properties();
+                try(var fin = new FileInputStream(bundle.buildPropertiesPath.toFile())) {
+                    bundleProperties.load(fin);
+                }
+
+                if (bundleProperties.containsKey("source..")){
+                    projectsGradleWriter
+                            .append("\tsrcSets.main.java.srcDirs = [")
+                            .append(Arrays
+                                    .stream(bundleProperties.getProperty("source..").split(","))
+                                    .map(source -> "'" + source + "'")
+                                    .collect(Collectors.joining(",")))
+                            .append("]\r\n");
+                }
+                if (bundleProperties.containsKey("bin.includes")){
+                    projectsGradleWriter
+                            .append("\tsrcSets.main.resources.includes = [")
+                            .append(Arrays
+                                    .stream(bundleProperties.getProperty("bin.includes").split(","))
+                                    .map(source -> "'" + source + "'")
+                                    .collect(Collectors.joining(",")))
+                            .append("]\r\n");
+                }
+
                 var manifest = getBundleManifest(bundle);
                 declareProjectDependencies(eclipseBundles, projectsGradleWriter, manifest);
 
@@ -68,7 +94,7 @@ public class Main {
             return;
         }
 
-        projectsGradleWriter.append("\tdependencies {\r\n");
+        projectsGradleWriter.append("\r\n\tdependencies {\r\n");
         var requiredBundles = new Scanner(requiredBundlesAttribute)
                 .findAll(Pattern.compile("([^;,]+)(;[^,]+)?(,|$)"))
                 .collect(Collectors.toList());
