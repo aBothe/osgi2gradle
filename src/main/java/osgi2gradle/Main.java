@@ -10,29 +10,44 @@ import java.util.stream.Collectors;
 
 public class Main {
 
+    private static class EclipseBundle {
+        public Path buildPropertiesPath;
+        public Path relativePath;
+        public String gradleSubprojectName;
+    }
+
     public static void main(String[] args) throws Exception {
-        var subProjectPaths = Files
-                .list(Paths.get("/home/lx/Dokumente/Projects/eclipse-workspace"))
-                .filter(path -> !path.getName(path.getNameCount() - 1).toString().startsWith("."))
-                .filter(path -> Files.isDirectory(path))
+        final var projectRootPath = Paths.get("/home/lx/Dokumente/Projects/eclipse-workspace");
+        var subProjectPaths = Files.walk(projectRootPath, 3)
+                .filter(path -> "build.properties".equals(path.getName(path.getNameCount() - 1).toString()))
+                .map(path -> {
+                    var bundle = new EclipseBundle();
+                    bundle.buildPropertiesPath = path;
+                    bundle.relativePath = projectRootPath.relativize(path).getParent();
+                    bundle.gradleSubprojectName = bundle.relativePath.toString()
+                            .replace(FileSystems.getDefault().getSeparator(),"-");
+                    return bundle;
+                })
                 .collect(Collectors.toList());
 
         makeProjectsGradle(subProjectPaths);
         makeSettingsGradle(subProjectPaths);
     }
 
-    private static void makeProjectsGradle(List<Path> subProjectPaths) throws Exception {
-        var availableProjects = extractProjectNames(subProjectPaths);
+    private static void makeProjectsGradle(List<EclipseBundle> eclipseBundles) throws Exception {
+        var availableProjects = extractProjectNames(eclipseBundles);
         try (var projectsGradle = new FileOutputStream("subprojects.gradle");
              var projectsGradleWriter = new OutputStreamWriter(projectsGradle)) {
-            for (var path : subProjectPaths) {
-                var name = path.getName(path.getNameCount() - 1);
+            for (var bundle : eclipseBundles) {
                 projectsGradleWriter
                         .append("project(':")
-                        .append(name.toString())
-                        .append("') {\r\n");
+                        .append(bundle.gradleSubprojectName)
+                        .append("') {\r\n")
+                        .append("\tprojectDir = new File('")
+                        .append(bundle.relativePath.toString().replace(FileSystems.getDefault().getSeparator(),"/"))
+                        .append("')\r\n");
 
-                var manifestPath = Paths.get(path.toString(), "META-INF", "MANIFEST.MF");
+                var manifestPath = bundle.buildPropertiesPath.getParent().resolve("META-INF").resolve("MANIFEST.MF");
                 Manifest manifest;
                 try (var manifestStream = new FileInputStream(manifestPath.toFile())) {
                     manifest = new Manifest(manifestStream);
@@ -50,7 +65,7 @@ public class Main {
                             .forEach(bundleName -> {
                                 try {
                                     projectsGradleWriter
-                                            .append("\t\timplementation project(':")
+                                            .append("\t\timplementation bundle(':")
                                             .append(bundleName)
                                             .append("')\r\n");
                                 } catch (IOException e) {
@@ -66,22 +81,22 @@ public class Main {
         }
     }
 
-    private static List<String> extractProjectNames(List<Path> subProjectPaths) {
+    private static List<String> extractProjectNames(List<EclipseBundle> subProjectPaths) {
         return subProjectPaths
                 .stream()
-                .map(path -> path.getName(path.getNameCount() - 1).toString())
+                .map(path -> path.gradleSubprojectName)
                 .collect(Collectors.toList());
     }
 
-    private static void makeSettingsGradle(List<Path> subProjectPaths) throws IOException {
+    private static void makeSettingsGradle(List<EclipseBundle> subProjectPaths) throws IOException {
         try (var settingsGradleOS = new FileOutputStream("settings.gradle");
              var settingsGradleWriter = new OutputStreamWriter(settingsGradleOS)) {
-            extractProjectNames(subProjectPaths).forEach(path ->
+            subProjectPaths.forEach(eclipseBundle ->
             {
                 try {
                     settingsGradleWriter
                             .append("include '")
-                            .append(path.toString())
+                            .append(eclipseBundle.gradleSubprojectName)
                             .append("'\r\n");
                 } catch (IOException e) {
                     throw new RuntimeException(e);
