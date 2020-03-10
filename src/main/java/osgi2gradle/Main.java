@@ -2,10 +2,7 @@ package osgi2gradle;
 
 import java.io.*;
 import java.nio.file.*;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Properties;
-import java.util.Scanner;
+import java.util.*;
 import java.util.jar.Manifest;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -26,8 +23,8 @@ public class Main {
                     var bundle = new EclipseBundle();
                     bundle.buildPropertiesPath = path;
                     bundle.relativePath = projectRootPath.relativize(path).getParent();
-                    bundle.gradleSubprojectName = bundle.relativePath
-                            .getName(bundle.relativePath.getNameCount() - 1).toString();
+                    bundle.gradleSubprojectName = bundle.relativePath.toString()
+                            .replace(FileSystems.getDefault().getSeparator(), ":");
                     return bundle;
                 })
                 .collect(Collectors.toList());
@@ -49,7 +46,7 @@ public class Main {
 
                 if (bundleProperties.containsKey("source..")){
                     projectsGradleWriter
-                            .append("\tsrcSets.main.java.srcDirs = [")
+                            .append("\tsourceSets.main.java.srcDirs = [")
                             .append(Arrays
                                     .stream(bundleProperties.getProperty("source..").split(","))
                                     .map(source -> "'" + source + "'")
@@ -58,7 +55,7 @@ public class Main {
                 }
                 if (bundleProperties.containsKey("bin.includes")){
                     projectsGradleWriter
-                            .append("\tsrcSets.main.resources.includes = [")
+                            .append("\tsourceSets.main.resources.includes = [")
                             .append(Arrays
                                     .stream(bundleProperties.getProperty("bin.includes").split(","))
                                     .map(source -> "'" + source + "'")
@@ -80,10 +77,6 @@ public class Main {
                 .append("project(':")
                 .append(bundle.gradleSubprojectName)
                 .append("') {\r\n");
-
-        projectsGradleWriter.append("\tprojectDir = new File('")
-                .append(bundle.relativePath.toString().replace(FileSystems.getDefault().getSeparator(),"/"))
-                .append("')\r\n");
     }
 
     private static void declareProjectDependencies(List<EclipseBundle> eclipseBundles,
@@ -99,14 +92,16 @@ public class Main {
                 .findAll(Pattern.compile("([^;,]+)(;[^,]+)?(,|$)"))
                 .collect(Collectors.toList());
 
-        final var projectNames = extractProjectNames(eclipseBundles);
         requiredBundles.stream().map(matchResult -> matchResult.group(1))
-                .filter(projectNames::contains)
-                .forEach(bundleName -> {
+                .map(bundleName -> eclipseBundles.stream().filter(bundle -> bundleName
+                        .equalsIgnoreCase(bundle.relativePath.getName(bundle.relativePath.getNameCount() - 1).toString()))
+                        .findFirst().orElse(null))
+                .filter(Objects::nonNull)
+                .forEach(bundle -> {
                     try {
                         projectsGradleWriter
-                                .append("\t\timplementation bundle(':")
-                                .append(bundleName)
+                                .append("\t\timplementation project(':")
+                                .append(bundle.gradleSubprojectName)
                                 .append("')\r\n");
                     } catch (IOException e) {
                         throw new RuntimeException(e);
