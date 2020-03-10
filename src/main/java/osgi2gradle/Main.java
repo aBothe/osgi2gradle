@@ -24,8 +24,8 @@ public class Main {
                     var bundle = new EclipseBundle();
                     bundle.buildPropertiesPath = path;
                     bundle.relativePath = projectRootPath.relativize(path).getParent();
-                    bundle.gradleSubprojectName = bundle.relativePath.toString()
-                            .replace(FileSystems.getDefault().getSeparator(),"-");
+                    bundle.gradleSubprojectName = bundle.relativePath
+                            .getName(bundle.relativePath.getNameCount() - 1).toString();
                     return bundle;
                 })
                 .collect(Collectors.toList());
@@ -35,50 +35,68 @@ public class Main {
     }
 
     private static void makeProjectsGradle(List<EclipseBundle> eclipseBundles, Path toGradleFile) throws Exception {
-        var availableProjects = extractProjectNames(eclipseBundles);
         try (var projectsGradle = new FileOutputStream(toGradleFile.toFile());
              var projectsGradleWriter = new OutputStreamWriter(projectsGradle)) {
             for (var bundle : eclipseBundles) {
-                projectsGradleWriter
-                        .append("project(':")
-                        .append(bundle.gradleSubprojectName)
-                        .append("') {\r\n")
-                        .append("\tprojectDir = new File('")
-                        .append(bundle.relativePath.toString().replace(FileSystems.getDefault().getSeparator(),"/"))
-                        .append("')\r\n");
+                declareProjectHead(projectsGradleWriter, bundle);
 
-                var manifestPath = bundle.buildPropertiesPath.getParent().resolve("META-INF").resolve("MANIFEST.MF");
-                Manifest manifest;
-                try (var manifestStream = new FileInputStream(manifestPath.toFile())) {
-                    manifest = new Manifest(manifestStream);
-                }
-
-                var requiredBundlesAttribute = manifest.getMainAttributes().getValue("Require-Bundle");
-                if (requiredBundlesAttribute != null) {
-                    projectsGradleWriter.append("\tdependencies {\r\n");
-                    var requiredBundles = new Scanner(requiredBundlesAttribute)
-                            .findAll(Pattern.compile("([^;,]+)(;[^,]+)?(,|$)"))
-                            .collect(Collectors.toList());
-
-                    requiredBundles.stream().map(matchResult -> matchResult.group(1))
-                            .filter(availableProjects::contains)
-                            .forEach(bundleName -> {
-                                try {
-                                    projectsGradleWriter
-                                            .append("\t\timplementation bundle(':")
-                                            .append(bundleName)
-                                            .append("')\r\n");
-                                } catch (IOException e) {
-                                    throw new RuntimeException(e);
-                                }
-                            });
-
-                    projectsGradleWriter.append("\t}\r\n");
-                }
+                var manifest = getBundleManifest(bundle);
+                declareProjectDependencies(eclipseBundles, projectsGradleWriter, manifest);
 
                 projectsGradleWriter.append("}\r\n\r\n");
             }
         }
+    }
+
+    private static void declareProjectHead(OutputStreamWriter projectsGradleWriter, EclipseBundle bundle)
+            throws IOException {
+        projectsGradleWriter
+                .append("project(':")
+                .append(bundle.gradleSubprojectName)
+                .append("') {\r\n");
+
+        projectsGradleWriter.append("\tprojectDir = new File('")
+                .append(bundle.relativePath.toString().replace(FileSystems.getDefault().getSeparator(),"/"))
+                .append("')\r\n");
+    }
+
+    private static void declareProjectDependencies(List<EclipseBundle> eclipseBundles,
+                                                   OutputStreamWriter projectsGradleWriter,
+                                                   Manifest manifest) throws IOException {
+        var requiredBundlesAttribute = manifest.getMainAttributes().getValue("Require-Bundle");
+        if (requiredBundlesAttribute == null) {
+            return;
+        }
+
+        projectsGradleWriter.append("\tdependencies {\r\n");
+        var requiredBundles = new Scanner(requiredBundlesAttribute)
+                .findAll(Pattern.compile("([^;,]+)(;[^,]+)?(,|$)"))
+                .collect(Collectors.toList());
+
+        final var projectNames = extractProjectNames(eclipseBundles);
+        requiredBundles.stream().map(matchResult -> matchResult.group(1))
+                .filter(projectNames::contains)
+                .forEach(bundleName -> {
+                    try {
+                        projectsGradleWriter
+                                .append("\t\timplementation bundle(':")
+                                .append(bundleName)
+                                .append("')\r\n");
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+
+        projectsGradleWriter.append("\t}\r\n");
+    }
+
+    private static Manifest getBundleManifest(EclipseBundle bundle) throws IOException {
+        var manifestPath = bundle.buildPropertiesPath.getParent().resolve("META-INF").resolve("MANIFEST.MF");
+        Manifest manifest;
+        try (var manifestStream = new FileInputStream(manifestPath.toFile())) {
+            manifest = new Manifest(manifestStream);
+        }
+        return manifest;
     }
 
     private static List<String> extractProjectNames(List<EclipseBundle> subProjectPaths) {
