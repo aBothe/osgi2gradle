@@ -37,7 +37,7 @@ public class Main {
         try (var projectsGradle = new FileOutputStream(toGradleFile.toFile());
              var projectsGradleWriter = new OutputStreamWriter(projectsGradle)) {
             for (var bundle : eclipseBundles) {
-                declareProjectHead(projectsGradleWriter, bundle);
+                declareProjectSignature(projectsGradleWriter, bundle);
 
                 var bundleProperties = new Properties();
                 try(var fin = new FileInputStream(bundle.buildPropertiesPath.toFile())) {
@@ -76,7 +76,7 @@ public class Main {
         }
     }
 
-    private static void declareProjectHead(OutputStreamWriter projectsGradleWriter, EclipseBundle bundle)
+    private static void declareProjectSignature(OutputStreamWriter projectsGradleWriter, EclipseBundle bundle)
             throws IOException {
         projectsGradleWriter
                 .append("project(':")
@@ -123,13 +123,6 @@ public class Main {
             manifest = new Manifest(manifestStream);
         }
         return manifest;
-    }
-
-    private static List<String> extractProjectNames(List<EclipseBundle> subProjectPaths) {
-        return subProjectPaths
-                .stream()
-                .map(path -> path.gradleSubprojectName)
-                .collect(Collectors.toList());
     }
 
     private static void makeSettingsGradle(List<EclipseBundle> subProjectPaths, Path settingsFile) throws IOException {
