@@ -27,6 +27,7 @@ public class Main {
                             .replace(FileSystems.getDefault().getSeparator(), ":");
                     return bundle;
                 })
+                .sorted((a, b) -> a.gradleSubprojectName.compareToIgnoreCase(b.gradleSubprojectName))
                 .collect(Collectors.toList());
 
         makeProjectsGradle(subProjectPaths, projectRootPath.resolve("subprojects.gradle"));
