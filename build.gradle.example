@@ -17,7 +17,7 @@ subprojects {
 
     jar {
         onlyIf { !compileJava.source.empty }
-        manifest { // https://stackoverflow.com/questions/26636534/gradle-manifest-mf
+        manifest {
             def manif = "${projectDir}/META-INF/MANIFEST.MF"
             if (new File(manif).exists()) {
                 from(manif)
@@ -32,7 +32,14 @@ def p2bundle(name, version = '') {
             .filter({ it.getName(it.getNameCount() - 1).toString().startsWith(name) })
     .sorted({a,b -> -a.toString().compareToIgnoreCase(b.toString())})
     .findFirst()
-    .orElseThrow({ new NoSuchFileException(pluginsFolder.resolve(name + ".jar")) })
+    .orElseThrow({ new NoSuchFileException(pluginsFolder.resolve(name + '.jar')) })
+
+    if (jarFile.toFile().isDirectory()) {
+        return files(Files.walk(jarFile).filter({
+            it.getName(it.getNameCount() - 1).toString().endsWith('.jar')
+        }).collect())
+    }
+
     return files(jarFile)
 }
 
