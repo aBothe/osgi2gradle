@@ -1,3 +1,7 @@
+import java.nio.file.Files
+import java.nio.file.NoSuchFileException
+import java.nio.file.Paths
+
 subprojects {
 
     repositories {
@@ -7,7 +11,8 @@ subprojects {
     apply plugin: 'java'
 
     dependencies {
-        implementation group: 'org.osgi', name: 'osgi.core', version: '7.0.0'
+        //implementation group: 'org.osgi', name: 'osgi.core', version: '7.0.0'
+        //providedCompile group: 'org.osgi', name: 'org.osgi.core', version: '6.0.0'
     }
 
     jar {
@@ -19,6 +24,16 @@ subprojects {
             }
         }
     }
+}
+
+def p2bundle(name, version = '') {
+    def pluginsFolder = Paths.get('/home/lx/Dokumente/Projects/eclipse/plugins')
+    def jarFile = Files.walk(pluginsFolder, 1)
+            .filter({ it.getName(it.getNameCount() - 1).toString().startsWith(name) })
+    .sorted({a,b -> -a.toString().compareToIgnoreCase(b.toString())})
+    .findFirst()
+    .orElseThrow({ new NoSuchFileException(pluginsFolder.resolve(name + ".jar")) })
+    return files(jarFile)
 }
 
 apply from: 'subprojects.gradle'
