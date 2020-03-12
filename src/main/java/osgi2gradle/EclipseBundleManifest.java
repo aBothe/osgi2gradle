@@ -19,11 +19,19 @@ class EclipseBundleManifest {
     private static class P2BundleReference {
         String name;
         String version;
+
+        void declareP2BundleCall(OutputStreamWriter writer) throws IOException {
+            writer.append("p2bundle('").append(name).append("'");
+            if (version != null) {
+                writer.append(", '").append(version).append("'");
+            }
+            writer.append(")");
+        }
     }
 
     void declareProjectDependencies(List<EclipseBundleGradleProject> availableProjects,
                                     OutputStreamWriter projectsGradleWriter) throws IOException {
-        if (!hasAnyDependencies(bundleManifest)) {
+        if (hasNoDependency()) {
             return;
         }
 
@@ -36,13 +44,13 @@ class EclipseBundleManifest {
     private void declareProjectImplementationDependencies(
             List<EclipseBundleGradleProject> availableProjects,
             OutputStreamWriter projectsGradleWriter) {
-        var requiredBundlesAttribute = bundleManifest.getMainAttributes().getValue("Require-Bundle");
-        var requiredBundles = parseManifestBundleReferences(requiredBundlesAttribute);
+        var bundlesListAttribute = bundleManifest.getMainAttributes().getValue("Require-Bundle");
+        var referencedBundles = parseManifestBundleReferences(bundlesListAttribute);
 
-        findProjectIncludes(availableProjects, requiredBundles).forEach(bundle -> {
+        findProjectIncludes(availableProjects, referencedBundles).forEach(bundle -> {
             try {
                 projectsGradleWriter
-                        .append("\t\timplementation project(':")
+                        .append("\t\t").append("implementation").append(" project(':")
                         .append(bundle.gradleSubprojectName)
                         .append("')\r\n");
             } catch (IOException e) {
@@ -50,36 +58,40 @@ class EclipseBundleManifest {
             }
         });
 
-        findNonProjectIncludes(availableProjects, requiredBundles).forEach(bundle -> {
+        findNonProjectIncludes(availableProjects, referencedBundles).forEach(bundle -> {
             try {
                 projectsGradleWriter
-                        .append("\t\timplementation p2bundle('")
-                        .append(bundle.name)
-                        .append("'");
-                if (bundle.version != null) {
-                    projectsGradleWriter.append(", '").append(bundle.version).append("'");
-                }
-                projectsGradleWriter.append(")\r\n");
+                        .append("\t\t").append("implementation").append(" ");
+                bundle.declareP2BundleCall(projectsGradleWriter);
+                projectsGradleWriter.append("\r\n");
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         });
     }
 
-    private boolean hasAnyDependencies(Manifest bundleManifest) {
+    private boolean hasNoDependency() {
         var requiredBundlesAttribute = bundleManifest.getMainAttributes().getValue("Require-Bundle");
-        var importPackageAttribute = bundleManifest.getMainAttributes().getValue("Import-Package");
-        return requiredBundlesAttribute != null && !requiredBundlesAttribute.isBlank() &&
-                importPackageAttribute != null && !importPackageAttribute.isBlank();
+        return (requiredBundlesAttribute == null || requiredBundlesAttribute.isBlank());
     }
 
-    private List<P2BundleReference> parseManifestBundleReferences(String requiredBundlesAttribute) {
-        return new Scanner(requiredBundlesAttribute)
-                .findAll(Pattern.compile("([^;,]+)(;[^,]+)?(,|$)"))
+    private static final Pattern bundlesListAttributeFormat = Pattern.compile("([^;,]+)(;[^,]+)?(,|$)");
+    private static final Pattern bundleVersionFormat = Pattern.compile(";version=\"(.+)\"$");
+
+    private List<P2BundleReference> parseManifestBundleReferences(String bundlesListAttribute) {
+        return new Scanner(bundlesListAttribute != null ? bundlesListAttribute : "")
+                .findAll(bundlesListAttributeFormat)
                 .map(matchResult -> {
                     var p2BundleRef = new P2BundleReference();
                     p2BundleRef.name = matchResult.group(1);
-                    p2BundleRef.version = matchResult.group(2);
+                    var versionString = matchResult.group(2);
+                    if (versionString != null) {
+                        var versionParser = bundleVersionFormat.matcher(versionString);
+                        if (versionParser.matches()) {
+                            versionString = versionParser.group(1);
+                        }
+                    }
+                    p2BundleRef.version = versionString;
                     return p2BundleRef;
                 })
                 .collect(Collectors.toList());
