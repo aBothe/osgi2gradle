@@ -1,6 +1,8 @@
 import java.nio.file.Files
 import java.nio.file.NoSuchFileException
 import java.nio.file.Paths
+import java.util.regex.Pattern
+import java.util.zip.ZipFile
 
 subprojects {
 
@@ -26,21 +28,68 @@ subprojects {
     }
 }
 
-def p2bundle(name, version = '') {
+static def readBundleManifest(java.nio.file.Path bundlePath) {
+    if (bundlePath.toFile().isDirectory()) {
+        new FileInputStream(bundlePath.resolve("META-INF").resolve("MANIFEST.MF").toFile()).withCloseable {
+            return new java.util.jar.Manifest(it)
+        }
+    } else {
+        new ZipFile(bundlePath.toFile()).withCloseable {
+            it.getInputStream(it.getEntry("META-INF/MANIFEST.MF")).withCloseable {
+                return new java.util.jar.Manifest(it)
+            }
+        }
+    }
+}
+
+static List<String> readReexportedRequiredBundles(java.util.jar.Manifest manifest) {
+    final def reexportedBundlePattern = Pattern.compile('(^|,)([^;]+);(bundle-version[^;]+;)?visibility:=reexport')
+    final def bundlesListAttribute = manifest.getMainAttributes().getValue("Require-Bundle");
+    if(bundlesListAttribute == null) {
+        return Collections.emptyList()
+    }
+    def matcher = reexportedBundlePattern.matcher(bundlesListAttribute);
+    def returnedBundles = new ArrayList<String>();
+    for(int startIndex = 0; matcher.find(startIndex); startIndex = matcher.end()) {
+        returnedBundles.add(matcher.group(2));
+    }
+    return returnedBundles;
+}
+
+
+def analyzeBundleForTransitiveDependencies(java.nio.file.Path jarFile, Set<String> alreadyImportedBundles) {
+    def requiredBundles = readReexportedRequiredBundles(readBundleManifest(jarFile))
+    def bundleJarsToAdd = new HashSet<String>();
+    requiredBundles.stream()
+        .map({ recurseP2bundle(it, alreadyImportedBundles) })
+            .forEach({ bundleJarsToAdd.addAll(it.toList()) })
+    return bundleJarsToAdd
+/*
+    return files(Files.walk(jarFile).filter({
+        it.getName(it.getNameCount() - 1).toString().endsWith('.jar')
+    }).collect())
+*/
+}
+
+private def recurseP2bundle(String name, Set<String> alreadyImportedBundles) {
+    if (!alreadyImportedBundles.add(name)) {
+        return Collections.emptySet()
+    }
     def pluginsFolder = Paths.get('/home/lx/Dokumente/Projects/eclipse/plugins')
     def jarFile = Files.walk(pluginsFolder, 1)
-            .filter({ it.getName(it.getNameCount() - 1).toString().startsWith(name) })
-    .sorted({a,b -> -a.toString().compareToIgnoreCase(b.toString())})
-    .findFirst()
-    .orElseThrow({ new NoSuchFileException(pluginsFolder.resolve(name + '.jar')) })
+            .filter({ it.getName(it.getNameCount() - 1).toString().startsWith(name + '_') })
+            .sorted({a,b -> -a.toString().compareToIgnoreCase(b.toString())})
+            .findFirst()
+            .orElseThrow({ new NoSuchFileException(pluginsFolder.resolve(name + '.jar').toString()) })
 
-    if (jarFile.toFile().isDirectory()) {
-        return files(Files.walk(jarFile).filter({
-            it.getName(it.getNameCount() - 1).toString().endsWith('.jar')
-        }).collect())
-    }
+    def dependencies = new HashSet<String>()
+    dependencies.add(jarFile.toString())
+    dependencies.addAll(analyzeBundleForTransitiveDependencies(jarFile, alreadyImportedBundles))
+    return dependencies;
+}
 
-    return files(jarFile)
+def p2bundle(String name, version = '') {
+    return files(recurseP2bundle(name, new HashSet<>()))
 }
 
 apply from: 'subprojects.gradle'
