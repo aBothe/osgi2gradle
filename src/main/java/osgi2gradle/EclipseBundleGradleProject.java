@@ -43,19 +43,19 @@ class EclipseBundleGradleProject {
                             .collect(Collectors.joining(",")))
                     .append("]\r\n");
         }
+
+        projectsGradleWriter
+                .append("\tsourceSets.main.resources.srcDirs = sourceSets.main.java.srcDirs\r\n");
         if (bundleProperties.containsKey("bin.includes")) {
             projectsGradleWriter
-                    .append("\tsourceSets.main.resources {\r\n")
-                    .append("\t\tsrcDirs = ['.']\r\n")
-                    .append("\t\tincludes += [")
+                    .append("\tjar.from fileTree(projectDir) { includes = [")
                     .append(Arrays
                             .stream(bundleProperties.getProperty("bin.includes").split(","))
                             .map(String::trim)
                             .filter(include -> !".".equals(include))
                             .map(source -> "'" + source + "'")
                             .collect(Collectors.joining(",")))
-                    .append("]\r\n")
-                    .append("\t}\r\n");
+                    .append("] }\r\n");
         }
     }
 
