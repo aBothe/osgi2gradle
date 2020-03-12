@@ -15,6 +15,11 @@ public class Main {
         String gradleSubprojectName;
     }
 
+    private static class P2BundleReference {
+        String name;
+        String version;
+    }
+
     public static void main(String[] args) throws Exception {
         final var projectRootPath = Paths.get("/home/lx/Dokumente/Projects/eclipse-workspace");
         var subProjectPaths = Files.walk(projectRootPath, 3)
@@ -69,8 +74,7 @@ public class Main {
                             .append("\t}\r\n");
                 }
 
-                var manifest = getBundleManifest(bundle);
-                declareProjectDependencies(eclipseBundles, projectsGradleWriter, manifest);
+                declareProjectDependencies(eclipseBundles, projectsGradleWriter, getBundleManifest(bundle));
 
                 projectsGradleWriter.append("}\r\n\r\n");
             }
@@ -85,7 +89,7 @@ public class Main {
                 .append("') {\r\n");
     }
 
-    private static void declareProjectDependencies(List<EclipseBundle> eclipseBundles,
+    private static void declareProjectDependencies(List<EclipseBundle> availableProjects,
                                                    OutputStreamWriter projectsGradleWriter,
                                                    Manifest manifest) throws IOException {
         var requiredBundlesAttribute = manifest.getMainAttributes().getValue("Require-Bundle");
@@ -94,16 +98,9 @@ public class Main {
         }
 
         projectsGradleWriter.append("\r\n\tdependencies {\r\n");
-        var requiredBundles = new Scanner(requiredBundlesAttribute)
-                .findAll(Pattern.compile("([^;,]+)(;[^,]+)?(,|$)"))
-                .collect(Collectors.toList());
+        var requiredBundles = parseManifestBundleReferences(requiredBundlesAttribute);
 
-        requiredBundles.stream().map(matchResult -> matchResult.group(1))
-                .map(bundleName -> eclipseBundles.stream().filter(bundle -> bundleName
-                        .equalsIgnoreCase(bundle.relativePath.getName(bundle.relativePath.getNameCount() - 1).toString()))
-                        .findFirst().orElse(null))
-                .filter(Objects::nonNull)
-                .forEach(bundle -> {
+        findProjectIncludes(availableProjects, requiredBundles).forEach(bundle -> {
                     try {
                         projectsGradleWriter
                                 .append("\t\timplementation project(':")
@@ -114,16 +111,64 @@ public class Main {
                     }
                 });
 
+        findNonProjectIncludes(availableProjects, requiredBundles).forEach(bundle -> {
+            try {
+                projectsGradleWriter
+                        .append("\t\timplementation p2bundle('")
+                        .append(bundle.name)
+                        .append("'");
+                if (bundle.version != null) {
+                    projectsGradleWriter.append(", '").append(bundle.version).append("'");
+                }
+                projectsGradleWriter.append(")\r\n");
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+
         projectsGradleWriter.append("\t}\r\n");
+    }
+
+    private static List<P2BundleReference> parseManifestBundleReferences(String requiredBundlesAttribute) {
+        return new Scanner(requiredBundlesAttribute)
+                .findAll(Pattern.compile("([^;,]+)(;[^,]+)?(,|$)"))
+                .map(matchResult -> {
+                    var p2BundleRef = new P2BundleReference();
+                    p2BundleRef.name = matchResult.group(1);
+                    p2BundleRef.version = matchResult.group(2);
+                    return p2BundleRef;
+                })
+                .collect(Collectors.toList());
+    }
+
+    private static List<EclipseBundle> findProjectIncludes(
+            List<EclipseBundle> availableProjects,
+            List<P2BundleReference> requiredBundles) {
+        return requiredBundles.stream().map(matchResult -> availableProjects.stream().filter(bundle -> matchResult.name
+                .equalsIgnoreCase(bundle.relativePath.getName(bundle.relativePath.getNameCount() - 1).toString()))
+                .findFirst().orElse(null))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    private static List<P2BundleReference> findNonProjectIncludes(
+            List<EclipseBundle> availableProjects,
+            List<P2BundleReference> requiredBundles) {
+        return requiredBundles
+                .stream()
+                .filter(p2BundleReference -> availableProjects.stream()
+                        .noneMatch(bundle -> p2BundleReference.name
+                        .equalsIgnoreCase(bundle.relativePath
+                                .getName(bundle.relativePath.getNameCount() - 1).toString()))
+                )
+                .collect(Collectors.toList());
     }
 
     private static Manifest getBundleManifest(EclipseBundle bundle) throws IOException {
         var manifestPath = bundle.buildPropertiesPath.getParent().resolve("META-INF").resolve("MANIFEST.MF");
-        Manifest manifest;
         try (var manifestStream = new FileInputStream(manifestPath.toFile())) {
-            manifest = new Manifest(manifestStream);
+            return new Manifest(manifestStream);
         }
-        return manifest;
     }
 
     private static void makeSettingsGradle(List<EclipseBundle> subProjectPaths, Path settingsFile) throws IOException {
