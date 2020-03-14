@@ -82,8 +82,15 @@ private def recurseP2bundle(String name, Set<String> alreadyImportedBundles) {
     return dependencies;
 }
 
-def p2bundle(String name, version = '') {
-    return recurseP2bundle(name, new HashSet<>())
+ext.cachedResolvedBundles = new HashMap<String, FileCollection>()
+
+def p2bundle(String name, String version = '') {
+    if(rootProject.cachedResolvedBundles.containsKey(name + version)) {
+        return rootProject.cachedResolvedBundles.get(name + version);
+    }
+    def resolvedDependencies = recurseP2bundle(name, new HashSet<>())
+    rootProject.cachedResolvedBundles.put(name + version, resolvedDependencies)
+    return resolvedDependencies
 }
 
 
