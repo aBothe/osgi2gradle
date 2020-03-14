@@ -28,7 +28,7 @@ subprojects {
     }
 }
 
-static def readBundleManifest(java.nio.file.Path bundlePath) {
+private static def readBundleManifest(java.nio.file.Path bundlePath) {
     if (bundlePath.toFile().isDirectory()) {
         new FileInputStream(bundlePath.resolve("META-INF").resolve("MANIFEST.MF").toFile()).withCloseable {
             return new java.util.jar.Manifest(it)
@@ -42,7 +42,7 @@ static def readBundleManifest(java.nio.file.Path bundlePath) {
     }
 }
 
-static List<String> readReexportedRequiredBundles(java.util.jar.Manifest manifest) {
+private static List<String> readReexportedRequiredBundles(java.util.jar.Manifest manifest) {
     final def reexportedBundlePattern = Pattern.compile('(^|,)([^;]+);(bundle-version[^;]+;)?visibility:=reexport')
     final def bundlesListAttribute = manifest.getMainAttributes().getValue("Require-Bundle");
     if(bundlesListAttribute == null) {
@@ -56,19 +56,33 @@ static List<String> readReexportedRequiredBundles(java.util.jar.Manifest manifes
     return returnedBundles;
 }
 
+private static List<String> readBundleClasspath(java.util.jar.Manifest manifest) {
+    final def bundlesListAttribute = manifest.getMainAttributes().getValue("Bundle-ClassPath");
+    if(bundlesListAttribute == null) {
+        return Collections.emptyList()
+    }
+    return bundlesListAttribute.split(",")
+}
 
-def analyzeBundleForTransitiveDependencies(java.nio.file.Path jarFile, Set<String> alreadyImportedBundles) {
-    def requiredBundles = readReexportedRequiredBundles(readBundleManifest(jarFile))
-    def bundleJarsToAdd = new HashSet<String>();
+private def analyzeBundleForTransitiveDependencies(java.nio.file.Path ofBundle, Set<String> alreadyImportedBundles) {
+    final def manifest = readBundleManifest(ofBundle);
+    def requiredBundles = readReexportedRequiredBundles(manifest)
+    def bundleJarsToAdd = files()
+    def nestedJarsOnClasspath = readBundleClasspath(manifest)
+    if (!nestedJarsOnClasspath.isEmpty()) {
+        FileCollection jarFileTree;
+        if (ofBundle.toFile().isDirectory()) {
+            jarFileTree = files(ofBundle)
+        } else {
+            jarFileTree = zipTree(ofBundle)
+        }
+        bundleJarsToAdd += jarFileTree.filter { it.toString().endsWithAny((String[])nestedJarsOnClasspath.toArray())}
+    }
+
     requiredBundles.stream()
         .map({ recurseP2bundle(it, alreadyImportedBundles) })
-            .forEach({ bundleJarsToAdd.addAll(it.toList()) })
+            .forEach({ bundleJarsToAdd += it })
     return bundleJarsToAdd
-/*
-    return files(Files.walk(jarFile).filter({
-        it.getName(it.getNameCount() - 1).toString().endsWith('.jar')
-    }).collect())
-*/
 }
 
 private def recurseP2bundle(String name, Set<String> alreadyImportedBundles) {
@@ -82,14 +96,18 @@ private def recurseP2bundle(String name, Set<String> alreadyImportedBundles) {
             .findFirst()
             .orElseThrow({ new NoSuchFileException(pluginsFolder.resolve(name + '.jar').toString()) })
 
-    def dependencies = new HashSet<String>()
-    dependencies.add(jarFile.toString())
-    dependencies.addAll(analyzeBundleForTransitiveDependencies(jarFile, alreadyImportedBundles))
+    FileCollection dependencies
+    if (jarFile.toFile().isDirectory()) {
+        dependencies = files(jarFile).filter {File file -> file.getName().endsWith('.class')}
+    } else {
+        dependencies = files(jarFile)
+    }
+    dependencies += analyzeBundleForTransitiveDependencies(jarFile, alreadyImportedBundles)
     return dependencies;
 }
 
 def p2bundle(String name, version = '') {
-    return files(recurseP2bundle(name, new HashSet<>()))
+    return recurseP2bundle(name, new HashSet<>())
 }
 
 apply from: 'subprojects.gradle'
