@@ -76,7 +76,6 @@ class EclipseBundleManifest {
     }
 
     private static final Pattern bundlesListAttributeFormat = Pattern.compile("([^;,]+)(;bundle-version=(\"[^\"]+\"|[^,;]+))?(;[\\w-]+=(\"[^\"]+\"|[^,;]+))*");
-    private static final Pattern bundleVersionFormat = Pattern.compile(";(bundle-)?version=\"(.+)\"(;|$)");
 
     private List<P2BundleReference> parseManifestBundleReferences(String bundlesListAttribute) {
         return new Scanner(bundlesListAttribute != null ? bundlesListAttribute : "")
@@ -84,12 +83,9 @@ class EclipseBundleManifest {
                 .map(matchResult -> {
                     var p2BundleRef = new P2BundleReference();
                     p2BundleRef.name = matchResult.group(1);
-                    var versionString = matchResult.group(2);
-                    if (versionString != null) {
-                        var versionParser = bundleVersionFormat.matcher(versionString);
-                        if (versionParser.matches()) {
-                            versionString = versionParser.group(2);
-                        }
+                    var versionString = matchResult.group(3);
+                    if (versionString != null && versionString.startsWith("\"")) {
+                        versionString = versionString.substring(1, versionString.length() - 1);
                     }
                     p2BundleRef.version = versionString;
                     return p2BundleRef;
