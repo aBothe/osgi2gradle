@@ -21,12 +21,12 @@ private static def readBundleManifest(java.nio.file.Path bundlePath) {
 private static List<String> readReexportedRequiredBundles(java.util.jar.Manifest manifest) {
     final def reexportedBundlePattern = Pattern.compile('(^|,)([^;]+);(bundle-version[^;]+;)?visibility:=reexport')
     final def bundlesListAttribute = manifest.getMainAttributes().getValue("Require-Bundle");
-    if(bundlesListAttribute == null) {
+    if (bundlesListAttribute == null) {
         return Collections.emptyList()
     }
     def matcher = reexportedBundlePattern.matcher(bundlesListAttribute);
     def returnedBundles = new ArrayList<String>();
-    for(int startIndex = 0; matcher.find(startIndex); startIndex = matcher.end()) {
+    for (int startIndex = 0; matcher.find(startIndex); startIndex = matcher.end()) {
         returnedBundles.add(matcher.group(2));
     }
     return returnedBundles;
@@ -34,7 +34,7 @@ private static List<String> readReexportedRequiredBundles(java.util.jar.Manifest
 
 private static List<String> readBundleClasspath(java.util.jar.Manifest manifest) {
     final def bundlesListAttribute = manifest.getMainAttributes().getValue("Bundle-ClassPath");
-    if(bundlesListAttribute == null) {
+    if (bundlesListAttribute == null) {
         return Collections.emptyList()
     }
     return bundlesListAttribute.split(",")
@@ -52,11 +52,11 @@ private def analyzeBundleForTransitiveDependencies(java.nio.file.Path ofBundle, 
         } else {
             jarFileTree = zipTree(ofBundle)
         }
-        bundleJarsToAdd += jarFileTree.filter { it.toString().endsWithAny((String[])nestedJarsOnClasspath.toArray())}
+        bundleJarsToAdd += jarFileTree.filter { it.toString().endsWithAny((String[]) nestedJarsOnClasspath.toArray()) }
     }
 
     requiredBundles.stream()
-        .map({ recurseP2bundle(it, alreadyImportedBundles) })
+            .map({ recurseP2bundle(it, alreadyImportedBundles) })
             .forEach({ bundleJarsToAdd += it })
     return bundleJarsToAdd
 }
@@ -68,13 +68,13 @@ private def recurseP2bundle(String name, Set<String> alreadyImportedBundles) {
     def pluginsFolder = Paths.get(rootProject.p2Root).resolve('plugins')
     def jarFile = Files.walk(pluginsFolder, 1)
             .filter({ it.getName(it.getNameCount() - 1).toString().startsWith(name + '_') })
-            .sorted({a,b -> -a.toString().compareToIgnoreCase(b.toString())})
+            .sorted({ a, b -> -a.toString().compareToIgnoreCase(b.toString()) })
             .findFirst()
             .orElseThrow({ new NoSuchFileException(pluginsFolder.resolve(name + '.jar').toString()) })
 
     FileCollection dependencies
     if (jarFile.toFile().isDirectory()) {
-        dependencies = files(jarFile).filter {File file -> file.getName().endsWith('.class')}
+        dependencies = files(jarFile).filter { File file -> file.getName().endsWith('.class') }
     } else {
         dependencies = files(jarFile)
     }
@@ -85,7 +85,7 @@ private def recurseP2bundle(String name, Set<String> alreadyImportedBundles) {
 ext.cachedResolvedBundles = new HashMap<String, FileCollection>()
 
 def p2bundle(String name, String version = '') {
-    if(rootProject.cachedResolvedBundles.containsKey(name + version)) {
+    if (rootProject.cachedResolvedBundles.containsKey(name + version)) {
         return rootProject.cachedResolvedBundles.get(name + version);
     }
     def resolvedDependencies = recurseP2bundle(name, new HashSet<>())
