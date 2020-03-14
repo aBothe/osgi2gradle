@@ -75,7 +75,7 @@ class EclipseBundleManifest {
         return (requiredBundlesAttribute == null || requiredBundlesAttribute.isBlank());
     }
 
-    private static final Pattern bundlesListAttributeFormat = Pattern.compile("([^;,]+)(;[^,]+)?(,|$)");
+    private static final Pattern bundlesListAttributeFormat = Pattern.compile("([^;,]+)(;bundle-version=(\"[^\"]+\"|[^,;]+))?(;[\\w-]+=(\"[^\"]+\"|[^,;]+))*");
     private static final Pattern bundleVersionFormat = Pattern.compile(";(bundle-)?version=\"(.+)\"(;|$)");
 
     private List<P2BundleReference> parseManifestBundleReferences(String bundlesListAttribute) {
