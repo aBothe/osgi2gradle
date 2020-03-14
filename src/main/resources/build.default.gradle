@@ -1,0 +1,28 @@
+
+
+subprojects {
+    apply plugin: 'java'
+
+    dependencies {
+        //implementation group: 'org.osgi', name: 'osgi.core', version: '7.0.0'
+        //providedCompile group: 'org.osgi', name: 'org.osgi.core', version: '6.0.0'
+    }
+
+    jar {
+        onlyIf { !compileJava.source.empty }
+        manifest {
+            def manif = "${projectDir}/META-INF/MANIFEST.MF"
+            if (new File(manif).exists()) {
+                from(manif)
+            }
+        }
+    }
+
+    repositories {
+        mavenCentral()
+    }
+}
+
+ext.p2Root = '/home/lx/Dokumente/Projects/eclipse'
+
+apply from: 'subprojects.gradle'

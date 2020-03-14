@@ -4,30 +4,6 @@ import java.nio.file.Paths
 import java.util.regex.Pattern
 import java.util.zip.ZipFile
 
-subprojects {
-
-    repositories {
-        mavenCentral()
-    }
-
-    apply plugin: 'java'
-
-    dependencies {
-        //implementation group: 'org.osgi', name: 'osgi.core', version: '7.0.0'
-        //providedCompile group: 'org.osgi', name: 'org.osgi.core', version: '6.0.0'
-    }
-
-    jar {
-        onlyIf { !compileJava.source.empty }
-        manifest {
-            def manif = "${projectDir}/META-INF/MANIFEST.MF"
-            if (new File(manif).exists()) {
-                from(manif)
-            }
-        }
-    }
-}
-
 private static def readBundleManifest(java.nio.file.Path bundlePath) {
     if (bundlePath.toFile().isDirectory()) {
         new FileInputStream(bundlePath.resolve("META-INF").resolve("MANIFEST.MF").toFile()).withCloseable {
@@ -89,7 +65,7 @@ private def recurseP2bundle(String name, Set<String> alreadyImportedBundles) {
     if (!alreadyImportedBundles.add(name)) {
         return Collections.emptySet()
     }
-    def pluginsFolder = Paths.get('/home/lx/Dokumente/Projects/eclipse/plugins')
+    def pluginsFolder = Paths.get(rootProject.p2Root).resolve('plugins')
     def jarFile = Files.walk(pluginsFolder, 1)
             .filter({ it.getName(it.getNameCount() - 1).toString().startsWith(name + '_') })
             .sorted({a,b -> -a.toString().compareToIgnoreCase(b.toString())})
@@ -110,4 +86,9 @@ def p2bundle(String name, version = '') {
     return recurseP2bundle(name, new HashSet<>())
 }
 
-apply from: 'subprojects.gradle'
+
+
+
+
+
+

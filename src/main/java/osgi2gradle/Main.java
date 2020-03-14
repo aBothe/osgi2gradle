@@ -11,8 +11,15 @@ public class Main {
         final var projectRootPath = Paths.get("/home/lx/Dokumente/Projects/eclipse-workspace");
         var projects = findSubProjects(projectRootPath);
 
-        makeProjectsGradle(projects, projectRootPath.resolve("subprojects.gradle"));
+        var subProjectsGradlePath = projectRootPath.resolve("subprojects.gradle");
+        Files.write(subProjectsGradlePath,
+                Main.class.getResourceAsStream("/bundlebuilder.gradle").readAllBytes());
+        makeProjectsGradle(projects, subProjectsGradlePath);
         makeSettingsGradle(projects, projectRootPath.resolve("settings.gradle"));
+        var buildGradlePath = projectRootPath.resolve("build.gradle");
+        if (!buildGradlePath.toFile().exists()) {
+            Files.write(buildGradlePath, Main.class.getResourceAsStream("/build.default.gradle").readAllBytes());
+        }
     }
 
     private static List<EclipseBundleGradleProject> findSubProjects(Path projectRootPath) throws IOException {
@@ -28,7 +35,7 @@ public class Main {
     }
 
     private static void makeProjectsGradle(List<EclipseBundleGradleProject> eclipseBundleGradleProjects, Path toGradleFile) throws Exception {
-        try (var projectsGradle = new FileOutputStream(toGradleFile.toFile());
+        try (var projectsGradle = new FileOutputStream(toGradleFile.toFile(), true);
              var projectsGradleWriter = new OutputStreamWriter(projectsGradle)) {
             for (var bundle : eclipseBundleGradleProjects) {
                 bundle.declareProjectSignature(projectsGradleWriter);
