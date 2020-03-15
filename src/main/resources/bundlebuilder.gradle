@@ -1,11 +1,12 @@
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.regex.Pattern
+import java.util.stream.Collectors
 import java.util.zip.ZipFile
 
 class Properties {
     static reexportedBundlePattern =
-            Pattern.compile('([\\w-._]+);([\\w-]+:?=("[^"]+"|[^,;]+);)*visibility:=reexport')
+            Pattern.compile('([\\w-._]+)(;[\\w-]+:?=("[^"]+"|[^,;]+))*')
     static cachedResolvedBundles = new HashMap<String, FileCollection>()
 }
 
@@ -28,12 +29,13 @@ private static List<String> readReexportedRequiredBundles(java.util.jar.Manifest
     if (bundlesListAttribute == null) {
         return Collections.emptyList()
     }
-    def matcher = Properties.reexportedBundlePattern.matcher(bundlesListAttribute);
-    def returnedBundles = new ArrayList<String>();
-    for (int startIndex = 0; matcher.find(startIndex); startIndex = matcher.end()) {
-        returnedBundles.add(matcher.group(1));
-    }
-    return returnedBundles;
+    return Properties
+            .reexportedBundlePattern
+            .matcher(bundlesListAttribute)
+            .results()
+            .filter({ it.group().contains("visibility:=reexport") && !it.group().contains("resolution:=optional") })
+            .map({ it.group(1) })
+            .collect(Collectors.toList())
 }
 
 private static List<String> readBundleClasspath(java.util.jar.Manifest manifest) {
