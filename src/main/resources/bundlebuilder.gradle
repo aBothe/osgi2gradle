@@ -95,8 +95,12 @@ private def recurseP2bundle(String name, Set<String> alreadyImportedBundles) {
 }
 
 def p2bundle(String name, String version = '') {
+    def cacheKey = name + version
+    if (Properties.cachedResolvedBundles.containsKey(cacheKey)) {
+        return Properties.cachedResolvedBundles.get(cacheKey)
+    }
     def resolvedDependencies = recurseP2bundle(name, new HashSet<>())
-    Properties.cachedResolvedBundles.put(name + version, resolvedDependencies)
+    Properties.cachedResolvedBundles.put(cacheKey, resolvedDependencies)
     return resolvedDependencies
 }
 
