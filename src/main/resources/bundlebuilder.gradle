@@ -19,15 +19,15 @@ private static def readBundleManifest(java.nio.file.Path bundlePath) {
 }
 
 private static List<String> readReexportedRequiredBundles(java.util.jar.Manifest manifest) {
-    final def reexportedBundlePattern = Pattern.compile('(^|,)([^;]+);(bundle-version[^;]+;)?visibility:=reexport')
+    final def reexportedBundlePattern = Pattern.compile('([\\w-._]+);([\\w-]+:?=("[^"]+"|[^,;]+);)*visibility:=reexport')
     final def bundlesListAttribute = manifest.getMainAttributes().getValue("Require-Bundle");
     if (bundlesListAttribute == null) {
         return Collections.emptyList()
     }
     def matcher = reexportedBundlePattern.matcher(bundlesListAttribute);
     def returnedBundles = new ArrayList<String>();
-    for (int startIndex = 0; matcher.find(startIndex); startIndex = matcher.end()) {
-        returnedBundles.add(matcher.group(2));
+    for (int startIndex = 0; matcher.find(startIndex); startIndex = Math.max(matcher.end() + 1, bundlesListAttribute.length() - 1)) {
+        returnedBundles.add(matcher.group(1));
     }
     return returnedBundles;
 }
@@ -63,14 +63,20 @@ private def analyzeBundleForTransitiveDependencies(java.nio.file.Path ofBundle, 
 
 private def recurseP2bundle(String name, Set<String> alreadyImportedBundles) {
     if (!alreadyImportedBundles.add(name)) {
-        return Collections.emptySet()
+        return files()
     }
     def pluginsFolder = Paths.get(rootProject.p2Root).resolve('plugins')
     def jarFile = Files.walk(pluginsFolder, 1)
             .filter({ it.getName(it.getNameCount() - 1).toString().startsWith(name + '_') })
             .sorted({ a, b -> -a.toString().compareToIgnoreCase(b.toString()) })
             .findFirst()
-            .orElseThrow({ new NoSuchFileException(pluginsFolder.resolve(name + '.jar').toString()) })
+            .orElseGet({
+                println 'Couldnt find (maybe optional?) bundle + ' name
+                return null
+            })
+    if (jarFile == null) {
+        return files()
+    }
 
     FileCollection dependencies
     if (jarFile.toFile().isDirectory()) {
