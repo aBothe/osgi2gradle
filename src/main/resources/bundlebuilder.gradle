@@ -18,15 +18,16 @@ private static def readBundleManifest(java.nio.file.Path bundlePath) {
     }
 }
 
+reexportedBundlePattern = Pattern.compile('([\\w-._]+);([\\w-]+:?=("[^"]+"|[^,;]+);)*visibility:=reexport')
+
 private static List<String> readReexportedRequiredBundles(java.util.jar.Manifest manifest) {
-    final def reexportedBundlePattern = Pattern.compile('([\\w-._]+);([\\w-]+:?=("[^"]+"|[^,;]+);)*visibility:=reexport')
     final def bundlesListAttribute = manifest.getMainAttributes().getValue("Require-Bundle");
     if (bundlesListAttribute == null) {
         return Collections.emptyList()
     }
     def matcher = reexportedBundlePattern.matcher(bundlesListAttribute);
     def returnedBundles = new ArrayList<String>();
-    for (int startIndex = 0; matcher.find(startIndex); startIndex = Math.max(matcher.end() + 1, bundlesListAttribute.length() - 1)) {
+    for (int startIndex = 0; matcher.find(startIndex); startIndex = matcher.end()) {
         returnedBundles.add(matcher.group(1));
     }
     return returnedBundles;
