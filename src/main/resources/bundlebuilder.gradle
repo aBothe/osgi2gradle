@@ -1,8 +1,13 @@
 import java.nio.file.Files
-import java.nio.file.NoSuchFileException
 import java.nio.file.Paths
 import java.util.regex.Pattern
 import java.util.zip.ZipFile
+
+class Properties {
+    static reexportedBundlePattern =
+            Pattern.compile('([\\w-._]+);([\\w-]+:?=("[^"]+"|[^,;]+);)*visibility:=reexport')
+    static cachedResolvedBundles = new HashMap<String, FileCollection>()
+}
 
 private static def readBundleManifest(java.nio.file.Path bundlePath) {
     if (bundlePath.toFile().isDirectory()) {
@@ -18,14 +23,12 @@ private static def readBundleManifest(java.nio.file.Path bundlePath) {
     }
 }
 
-reexportedBundlePattern = Pattern.compile('([\\w-._]+);([\\w-]+:?=("[^"]+"|[^,;]+);)*visibility:=reexport')
-
 private static List<String> readReexportedRequiredBundles(java.util.jar.Manifest manifest) {
     final def bundlesListAttribute = manifest.getMainAttributes().getValue("Require-Bundle");
     if (bundlesListAttribute == null) {
         return Collections.emptyList()
     }
-    def matcher = reexportedBundlePattern.matcher(bundlesListAttribute);
+    def matcher = Properties.reexportedBundlePattern.matcher(bundlesListAttribute);
     def returnedBundles = new ArrayList<String>();
     for (int startIndex = 0; matcher.find(startIndex); startIndex = matcher.end()) {
         returnedBundles.add(matcher.group(1));
@@ -89,14 +92,9 @@ private def recurseP2bundle(String name, Set<String> alreadyImportedBundles) {
     return dependencies;
 }
 
-ext.cachedResolvedBundles = new HashMap<String, FileCollection>()
-
 def p2bundle(String name, String version = '') {
-    if (rootProject.cachedResolvedBundles.containsKey(name + version)) {
-        return rootProject.cachedResolvedBundles.get(name + version);
-    }
     def resolvedDependencies = recurseP2bundle(name, new HashSet<>())
-    rootProject.cachedResolvedBundles.put(name + version, resolvedDependencies)
+    Properties.cachedResolvedBundles.put(name + version, resolvedDependencies)
     return resolvedDependencies
 }
 
