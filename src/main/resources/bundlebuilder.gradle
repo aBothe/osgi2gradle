@@ -1,7 +1,6 @@
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.regex.Pattern
-import java.util.stream.Collectors
 import java.util.zip.ZipFile
 
 class Properties {
@@ -29,13 +28,14 @@ private static List<String> readReexportedRequiredBundles(java.util.jar.Manifest
     if (bundlesListAttribute == null) {
         return Collections.emptyList()
     }
-    return Properties
-            .reexportedBundlePattern
-            .matcher(bundlesListAttribute)
-            .results()
-            .filter({ it.group().contains("visibility:=reexport") && !it.group().contains("resolution:=optional") })
-            .map({ it.group(1) })
-            .collect(Collectors.toList())
+    def matcher = Properties.reexportedBundlePattern.matcher(bundlesListAttribute)
+    def results = new ArrayList<String>()
+    for (int startIndex = 0; matcher.find(startIndex); startIndex = matcher.end()) {
+        if (matcher.group().contains("visibility:=reexport") && !matcher.group().contains("resolution:=optional")) {
+            results.add(matcher.group(1))
+        }
+    }
+    return results
 }
 
 private static List<String> readBundleClasspath(java.util.jar.Manifest manifest) {
@@ -58,7 +58,7 @@ private def analyzeBundleForTransitiveDependencies(java.nio.file.Path ofBundle, 
         } else {
             jarFileTree = zipTree(ofBundle)
         }
-        bundleJarsToAdd += jarFileTree.filter { it.toString().endsWithAny((String[]) nestedJarsOnClasspath.toArray()) }
+        bundleJarsToAdd += jarFileTree.filter { it.getName().endsWithAny((String[]) nestedJarsOnClasspath.toArray()) }
     }
 
     requiredBundles.stream()
