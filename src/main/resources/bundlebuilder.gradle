@@ -44,8 +44,8 @@ private static List<String> readBundleClasspath(java.util.jar.Manifest manifest)
     if (bundlesListAttribute == null) {
         return Collections.emptyList()
     }
-    return Arrays.asList(bundlesListAttribute.split(","))
-            .stream().map({ it.trim() })
+    return Arrays.stream(bundlesListAttribute.split(','))
+            .map({ it.trim() })
             .filter({ !".".equals(it) })
             .collect(Collectors.toList())
 }
