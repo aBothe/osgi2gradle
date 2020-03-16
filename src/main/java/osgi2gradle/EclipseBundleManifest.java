@@ -2,10 +2,11 @@ package osgi2gradle;
 
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Scanner;
 import java.util.jar.Manifest;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -44,8 +45,8 @@ class EclipseBundleManifest {
     private void declareProjectImplementationDependencies(
             List<EclipseBundleGradleProject> availableProjects,
             OutputStreamWriter projectsGradleWriter) {
-        var bundlesListAttribute = bundleManifest.getMainAttributes().getValue("Require-Bundle");
-        var referencedBundles = parseManifestBundleReferences(bundlesListAttribute);
+        String bundlesListAttribute = bundleManifest.getMainAttributes().getValue("Require-Bundle");
+        List<P2BundleReference> referencedBundles = parseManifestBundleReferences(bundlesListAttribute);
 
         findProjectIncludes(availableProjects, referencedBundles).forEach(bundle -> {
             try {
@@ -71,26 +72,27 @@ class EclipseBundleManifest {
     }
 
     private boolean hasNoDependency() {
-        var requiredBundlesAttribute = bundleManifest.getMainAttributes().getValue("Require-Bundle");
-        return (requiredBundlesAttribute == null || requiredBundlesAttribute.isBlank());
+        String requiredBundlesAttribute = bundleManifest.getMainAttributes().getValue("Require-Bundle");
+        return requiredBundlesAttribute == null || requiredBundlesAttribute.trim().isEmpty();
     }
 
-    private static final Pattern bundlesListAttributeFormat = Pattern.compile("([^;,]+)(;bundle-version=(\"[^\"]+\"|[^,;]+))?(;[\\w-]+:?=(\"[^\"]+\"|[^,;]+))*");
+    private static final Pattern bundlesListAttributeFormat = Pattern
+            .compile("([^;,]+)(;bundle-version=(\"[^\"]+\"|[^,;]+))?(;[\\w-]+:?=(\"[^\"]+\"|[^,;]+))*");
 
     private List<P2BundleReference> parseManifestBundleReferences(String bundlesListAttribute) {
-        return new Scanner(bundlesListAttribute != null ? bundlesListAttribute : "")
-                .findAll(bundlesListAttributeFormat)
-                .map(matchResult -> {
-                    var p2BundleRef = new P2BundleReference();
-                    p2BundleRef.name = matchResult.group(1);
-                    var versionString = matchResult.group(3);
-                    if (versionString != null && versionString.startsWith("\"")) {
-                        versionString = versionString.substring(1, versionString.length() - 1);
-                    }
-                    p2BundleRef.version = versionString;
-                    return p2BundleRef;
-                })
-                .collect(Collectors.toList());
+        Matcher matcher = bundlesListAttributeFormat.matcher(bundlesListAttribute != null ? bundlesListAttribute : "");
+        List<P2BundleReference> references = new ArrayList<>();
+        for (int startIndex = 0; matcher.find(startIndex); startIndex = matcher.end()) {
+            P2BundleReference p2BundleRef = new P2BundleReference();
+            p2BundleRef.name = matcher.group(1);
+            String versionString = matcher.group(3);
+            if (versionString != null && versionString.startsWith("\"")) {
+                versionString = versionString.substring(1, versionString.length() - 1);
+            }
+            p2BundleRef.version = versionString;
+            references.add(p2BundleRef);
+        }
+        return references;
     }
 
     private List<EclipseBundleGradleProject> findProjectIncludes(
