@@ -1,6 +1,7 @@
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.regex.Pattern
+import java.util.stream.Collectors
 import java.util.zip.ZipFile
 
 class Properties {
@@ -43,7 +44,10 @@ private static List<String> readBundleClasspath(java.util.jar.Manifest manifest)
     if (bundlesListAttribute == null) {
         return Collections.emptyList()
     }
-    return bundlesListAttribute.split(",")
+    return Arrays.asList(bundlesListAttribute.split(","))
+            .stream().map({ it.trim() })
+            .filter({ !".".equals(it) })
+            .collect(Collectors.toList())
 }
 
 private def analyzeBundleForTransitiveDependencies(java.nio.file.Path ofBundle, Set<String> alreadyImportedBundles) {
