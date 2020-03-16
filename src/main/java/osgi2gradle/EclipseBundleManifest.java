@@ -97,7 +97,7 @@ class EclipseBundleManifest {
     private boolean hasNoDependency() {
         String requiredBundlesAttribute = bundleManifest.getMainAttributes().getValue("Require-Bundle");
         return (requiredBundlesAttribute == null || requiredBundlesAttribute.trim().isEmpty()) &&
-                extractJarsOnClasspath().findFirst().isPresent();
+                !extractJarsOnClasspath().findFirst().isPresent();
     }
 
     private static final Pattern bundlesListAttributeFormat = Pattern
