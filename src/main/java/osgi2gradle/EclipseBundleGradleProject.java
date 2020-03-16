@@ -32,7 +32,7 @@ class EclipseBundleGradleProject {
     }
 
     void declareProjectSourceSets(OutputStreamWriter projectsGradleWriter) throws IOException {
-        var bundleProperties = readBundleProperties();
+        Properties bundleProperties = readBundleProperties();
 
         if (bundleProperties.containsKey("source..")) {
             projectsGradleWriter
@@ -60,16 +60,16 @@ class EclipseBundleGradleProject {
     }
 
     private Properties readBundleProperties() throws IOException {
-        var bundleProperties = new Properties();
-        try (var fin = new FileInputStream(buildPropertiesPath.toFile())) {
+        Properties bundleProperties = new Properties();
+        try (FileInputStream fin = new FileInputStream(buildPropertiesPath.toFile())) {
             bundleProperties.load(fin);
         }
         return bundleProperties;
     }
 
     Manifest readBundleManifest() throws IOException {
-        var manifestPath = buildPropertiesPath.getParent().resolve("META-INF").resolve("MANIFEST.MF");
-        try (var manifestStream = new FileInputStream(manifestPath.toFile())) {
+        Path manifestPath = buildPropertiesPath.getParent().resolve("META-INF").resolve("MANIFEST.MF");
+        try (FileInputStream manifestStream = new FileInputStream(manifestPath.toFile())) {
             return new Manifest(manifestStream);
         }
     }
