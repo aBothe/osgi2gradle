@@ -58,11 +58,11 @@ private def analyzeBundleForTransitiveDependencies(java.nio.file.Path ofBundle, 
     if (!nestedJarsOnClasspath.isEmpty()) {
         FileCollection jarFileTree;
         if (ofBundle.toFile().isDirectory()) {
-            jarFileTree = files(ofBundle)
+            jarFileTree = fileTree(dir: ofBundle)
         } else {
             jarFileTree = zipTree(ofBundle)
         }
-        bundleJarsToAdd += jarFileTree.filter { it.getName().endsWithAny((String[]) nestedJarsOnClasspath.toArray()) }
+        bundleJarsToAdd += jarFileTree.filter { File file -> nestedJarsOnClasspath.stream().anyMatch({ file.path.endsWith(it) }) }
     }
 
     requiredBundles.stream()
