@@ -8,17 +8,20 @@ import java.util.stream.Collectors;
 public class Main {
 
     public static void main(String[] args) throws Exception {
-        final var projectRootPath = Paths.get("/home/lx/Dokumente/Projects/eclipse-workspace");
-        var projects = findSubProjects(projectRootPath);
+        final Path projectRootPath = Paths.get("/home/lx/Dokumente/Projects/eclipse-workspace");
+        List<EclipseBundleGradleProject> projects = findSubProjects(projectRootPath);
 
-        var subProjectsGradlePath = projectRootPath.resolve("subprojects.gradle");
-        Files.write(subProjectsGradlePath,
-                Main.class.getResourceAsStream("/bundlebuilder.gradle").readAllBytes());
+        Path subProjectsGradlePath = projectRootPath.resolve("subprojects.gradle");
+        try(InputStream stream = Main.class.getResourceAsStream("/bundlebuilder.gradle")) {
+            Files.copy(stream, subProjectsGradlePath, StandardCopyOption.REPLACE_EXISTING);
+        }
         makeProjectsGradle(projects, subProjectsGradlePath);
         makeSettingsGradle(projects, projectRootPath.resolve("settings.gradle"));
-        var buildGradlePath = projectRootPath.resolve("build.gradle");
+        Path buildGradlePath = projectRootPath.resolve("build.gradle");
         if (!buildGradlePath.toFile().exists()) {
-            Files.write(buildGradlePath, Main.class.getResourceAsStream("/build.default.gradle").readAllBytes());
+            try(InputStream stream = Main.class.getResourceAsStream("/build.default.gradle")) {
+                Files.copy(stream, buildGradlePath);
+            }
         }
     }
 
@@ -26,7 +29,7 @@ public class Main {
         return Files.walk(projectRootPath, 3)
                 .filter(path -> "build.properties".equals(path.getName(path.getNameCount() - 1).toString()))
                 .map(path -> {
-                    var relativePath = projectRootPath.relativize(path).getParent();
+                    Path relativePath = projectRootPath.relativize(path).getParent();
                     return new EclipseBundleGradleProject(path, relativePath, relativePath.toString()
                             .replace(FileSystems.getDefault().getSeparator(), ":"));
                 })
@@ -35,9 +38,9 @@ public class Main {
     }
 
     private static void makeProjectsGradle(List<EclipseBundleGradleProject> eclipseBundleGradleProjects, Path toGradleFile) throws Exception {
-        try (var projectsGradle = new FileOutputStream(toGradleFile.toFile(), true);
-             var projectsGradleWriter = new OutputStreamWriter(projectsGradle)) {
-            for (var bundle : eclipseBundleGradleProjects) {
+        try (OutputStream projectsGradle = new FileOutputStream(toGradleFile.toFile(), true);
+             OutputStreamWriter projectsGradleWriter = new OutputStreamWriter(projectsGradle)) {
+            for (EclipseBundleGradleProject bundle : eclipseBundleGradleProjects) {
                 bundle.declareProjectSignature(projectsGradleWriter);
                 bundle.declareProjectSourceSets(projectsGradleWriter);
 
@@ -50,8 +53,8 @@ public class Main {
     }
 
     private static void makeSettingsGradle(List<EclipseBundleGradleProject> subProjectPaths, Path settingsFile) throws IOException {
-        try (var settingsGradleOS = new FileOutputStream(settingsFile.toFile());
-             var settingsGradleWriter = new OutputStreamWriter(settingsGradleOS)) {
+        try (OutputStream settingsGradleOS = new FileOutputStream(settingsFile.toFile());
+             OutputStreamWriter settingsGradleWriter = new OutputStreamWriter(settingsGradleOS)) {
             subProjectPaths.forEach(eclipseBundleGradleProject ->
             {
                 try {
