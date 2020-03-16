@@ -3,6 +3,7 @@ package osgi2gradle;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.jar.Manifest;
@@ -38,7 +39,7 @@ class EclipseBundleManifest {
 
         projectsGradleWriter.append("\r\n\tdependencies {\r\n");
         declareProjectImplementationDependencies(availableProjects, projectsGradleWriter);
-
+        declareInlineJarImplementationDependencies(projectsGradleWriter);
         projectsGradleWriter.append("\t}\r\n");
     }
 
@@ -69,6 +70,27 @@ class EclipseBundleManifest {
                 throw new RuntimeException(e);
             }
         });
+    }
+
+    private void declareInlineJarImplementationDependencies(OutputStreamWriter projectsGradleWriter) {
+        String classPath = bundleManifest.getMainAttributes().getValue("Bundle-ClassPath");
+        if (classPath == null) {
+            return;
+        }
+        String includedEntries = Arrays.stream(classPath.split(","))
+                .map(String::trim)
+                .filter(pathEntry -> pathEntry.toLowerCase().endsWith(".jar"))
+                .collect(Collectors.joining("', '"));
+        if (!includedEntries.isEmpty()) {
+            try {
+                projectsGradleWriter
+                        .append("\t\t").append("implementation files('")
+                        .append(includedEntries)
+                        .append("')\r\n");
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     private boolean hasNoDependency() {
