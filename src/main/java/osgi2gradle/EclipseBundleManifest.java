@@ -10,6 +10,7 @@ import java.util.jar.Manifest;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 class EclipseBundleManifest {
     private final Manifest bundleManifest;
@@ -73,14 +74,7 @@ class EclipseBundleManifest {
     }
 
     private void declareInlineJarImplementationDependencies(OutputStreamWriter projectsGradleWriter) {
-        String classPath = bundleManifest.getMainAttributes().getValue("Bundle-ClassPath");
-        if (classPath == null) {
-            return;
-        }
-        String includedEntries = Arrays.stream(classPath.split(","))
-                .map(String::trim)
-                .filter(pathEntry -> pathEntry.toLowerCase().endsWith(".jar"))
-                .collect(Collectors.joining("', '"));
+        String includedEntries = extractJarsOnClasspath().collect(Collectors.joining("', '"));
         if (!includedEntries.isEmpty()) {
             try {
                 projectsGradleWriter
@@ -93,9 +87,17 @@ class EclipseBundleManifest {
         }
     }
 
+    private Stream<String> extractJarsOnClasspath() {
+        String classPath = bundleManifest.getMainAttributes().getValue("Bundle-ClassPath");
+        return Arrays.stream(classPath != null ? classPath.split(",") : new String[0])
+                .map(String::trim)
+                .filter(pathEntry -> pathEntry.toLowerCase().endsWith(".jar"));
+    }
+
     private boolean hasNoDependency() {
         String requiredBundlesAttribute = bundleManifest.getMainAttributes().getValue("Require-Bundle");
-        return requiredBundlesAttribute == null || requiredBundlesAttribute.trim().isEmpty();
+        return (requiredBundlesAttribute == null || requiredBundlesAttribute.trim().isEmpty()) &&
+                extractJarsOnClasspath().findFirst().isPresent();
     }
 
     private static final Pattern bundlesListAttributeFormat = Pattern
