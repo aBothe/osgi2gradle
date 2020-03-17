@@ -39,6 +39,8 @@ class EclipseBundleGradleProject {
                     .append("\tsourceSets.main.java.srcDirs = [")
                     .append(Arrays
                             .stream(bundleProperties.getProperty("source..").split(","))
+                            .map(String::trim)
+                            .filter(include -> !".".equals(include))
                             .map(source -> "'" + source + "'")
                             .collect(Collectors.joining(",")))
                     .append("]\r\n");
@@ -47,15 +49,30 @@ class EclipseBundleGradleProject {
         projectsGradleWriter
                 .append("\tsourceSets.main.resources.srcDirs = sourceSets.main.java.srcDirs\r\n");
         if (bundleProperties.containsKey("bin.includes")) {
-            projectsGradleWriter
-                    .append("\tjar.from fileTree(projectDir) { includes = [")
-                    .append(Arrays
-                            .stream(bundleProperties.getProperty("bin.includes").split(","))
-                            .map(String::trim)
-                            .filter(include -> !".".equals(include))
-                            .map(source -> "'" + source + "'")
-                            .collect(Collectors.joining(",")))
-                    .append("] }\r\n");
+            String jarsToInline = Arrays
+                    .stream(bundleProperties.getProperty("bin.includes").split(","))
+                    .map(String::trim)
+                    .filter(include -> include.toLowerCase().endsWith(".jar"))
+                    .map(source -> "'" + source + "'")
+                    .collect(Collectors.joining(","));
+            if (!jarsToInline.isEmpty()) {
+                projectsGradleWriter
+                        .append("\tjar.from [").append(jarsToInline)
+                        .append("].collect { zipTree(it) }\r\n");
+            }
+
+            String nonJarsToInclude = Arrays
+                    .stream(bundleProperties.getProperty("bin.includes").split(","))
+                    .map(String::trim)
+                    .filter(include -> !".".equals(include) && !include.toLowerCase().endsWith(".jar"))
+                    .map(source -> "'" + source + "'")
+                    .collect(Collectors.joining(","));
+            if (!nonJarsToInclude.isEmpty()) {
+                projectsGradleWriter
+                        .append("\tjar.from fileTree(projectDir) { includes = [")
+                        .append(nonJarsToInclude)
+                        .append("] }\r\n");
+            }
         }
     }
 

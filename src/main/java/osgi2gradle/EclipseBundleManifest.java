@@ -78,7 +78,7 @@ class EclipseBundleManifest {
         if (!includedEntries.isEmpty()) {
             try {
                 projectsGradleWriter
-                        .append("\t\t").append("implementation files('")
+                        .append("\t\t").append("compileOnly files('")
                         .append(includedEntries)
                         .append("')\r\n");
             } catch (IOException e) {
