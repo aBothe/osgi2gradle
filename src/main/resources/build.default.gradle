@@ -9,7 +9,6 @@ subprojects {
     }
 
     jar {
-        onlyIf { !compileJava.source.empty }
         manifest {
             def manif = "${projectDir}/META-INF/MANIFEST.MF"
             if (new File(manif).exists()) {
