@@ -57,8 +57,8 @@ class EclipseBundleGradleProject {
                     .collect(Collectors.joining(","));
             if (!jarsToInline.isEmpty()) {
                 projectsGradleWriter
-                        .append("\tjar.from [").append(jarsToInline)
-                        .append("].collect { zipTree(it) }\r\n");
+                        .append("\tjar.from files(").append(jarsToInline)
+                        .append(").collect { zipTree(it) }\r\n");
             }
 
             String nonJarsToInclude = Arrays
