@@ -90,7 +90,7 @@ private def recurseP2bundle(String name, Set<String> alreadyImportedBundles) {
 
     FileCollection dependencies
     if (jarFile.toFile().isDirectory()) {
-        dependencies = files(jarFile).filter { File file -> file.getName().endsWith('.class') }
+        dependencies = fileTree(dir: jarFile, includes: ['**/*.class'])
     } else {
         dependencies = files(jarFile)
     }
