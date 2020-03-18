@@ -19,7 +19,7 @@ class EclipseBundleManifest {
         this.bundleManifest = bundleManifest;
     }
 
-    private static class P2BundleReference {
+    private static class P2BundleReference implements Comparable<P2BundleReference> {
         String name;
         String version;
 
@@ -29,6 +29,11 @@ class EclipseBundleManifest {
                 writer.append(", '").append(version).append("'");
             }
             writer.append(")");
+        }
+
+        @Override
+        public int compareTo(P2BundleReference p2BundleReference) {
+            return name.compareTo(p2BundleReference.name);
         }
     }
 
