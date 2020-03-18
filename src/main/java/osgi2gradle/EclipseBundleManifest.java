@@ -126,6 +126,7 @@ class EclipseBundleManifest {
                 .equalsIgnoreCase(bundle.relativePath.getName(bundle.relativePath.getNameCount() - 1).toString()))
                 .findFirst().orElse(null))
                 .filter(Objects::nonNull)
+                .sorted()
                 .collect(Collectors.toList());
     }
 
@@ -139,6 +140,7 @@ class EclipseBundleManifest {
                                 .equalsIgnoreCase(bundle.relativePath
                                         .getName(bundle.relativePath.getNameCount() - 1).toString()))
                 )
+                .sorted()
                 .collect(Collectors.toList());
     }
 }
