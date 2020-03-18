@@ -51,7 +51,7 @@ class EclipseBundleManifest {
 
     private void declareProjectImplementationDependencies(
             List<EclipseBundleGradleProject> availableProjects,
-            OutputStreamWriter projectsGradleWriter) {
+            OutputStreamWriter projectsGradleWriter) throws IOException {
         String bundlesListAttribute = bundleManifest.getMainAttributes().getValue("Require-Bundle");
         List<P2BundleReference> referencedBundles = parseManifestBundleReferences(bundlesListAttribute);
 
@@ -60,22 +60,24 @@ class EclipseBundleManifest {
                 projectsGradleWriter
                         .append("\t\t").append("implementation").append(" project(':")
                         .append(bundle.gradleSubprojectName)
-                        .append("')\r\n\r\n");
+                        .append("')\r\n");
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         });
+        projectsGradleWriter.append("\r\n");
 
         findNonProjectIncludes(availableProjects, referencedBundles).forEach(bundle -> {
             try {
                 projectsGradleWriter
                         .append("\t\t").append("implementation").append(" ");
                 bundle.declareP2BundleCall(projectsGradleWriter);
-                projectsGradleWriter.append("\r\n\r\n");
+                projectsGradleWriter.append("\r\n");
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         });
+        projectsGradleWriter.append("\r\n");
     }
 
     private void declareInlineJarImplementationDependencies(OutputStreamWriter projectsGradleWriter) {
