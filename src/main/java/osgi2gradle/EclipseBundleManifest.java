@@ -60,7 +60,7 @@ class EclipseBundleManifest {
                 projectsGradleWriter
                         .append("\t\t").append("implementation").append(" project(':")
                         .append(bundle.gradleSubprojectName)
-                        .append("')\r\n");
+                        .append("')\r\n\r\n");
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -71,7 +71,7 @@ class EclipseBundleManifest {
                 projectsGradleWriter
                         .append("\t\t").append("implementation").append(" ");
                 bundle.declareP2BundleCall(projectsGradleWriter);
-                projectsGradleWriter.append("\r\n");
+                projectsGradleWriter.append("\r\n\r\n");
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
