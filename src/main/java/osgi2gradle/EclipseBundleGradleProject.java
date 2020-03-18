@@ -9,7 +9,7 @@ import java.util.Properties;
 import java.util.jar.Manifest;
 import java.util.stream.Collectors;
 
-class EclipseBundleGradleProject {
+class EclipseBundleGradleProject implements Comparable<EclipseBundleGradleProject> {
     final Path buildPropertiesPath;
     final Path relativePath;
     final String gradleSubprojectName;
@@ -89,5 +89,10 @@ class EclipseBundleGradleProject {
         try (FileInputStream manifestStream = new FileInputStream(manifestPath.toFile())) {
             return new Manifest(manifestStream);
         }
+    }
+
+    @Override
+    public int compareTo(EclipseBundleGradleProject eclipseBundleGradleProject) {
+        return gradleSubprojectName.compareTo(eclipseBundleGradleProject.gradleSubprojectName);
     }
 }
