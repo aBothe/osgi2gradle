@@ -20,6 +20,12 @@ subprojects {
     repositories {
         mavenCentral()
     }
+
+    sourceSets.test.java.srcDirs = ['test/']
+
+    test {
+        ignoreFailures = true
+    }
 }
 
 ext.p2Root = '/home/lx/Dokumente/Projects/eclipse'
