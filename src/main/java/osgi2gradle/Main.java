@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 public class Main {
 
     public static void main(String[] args) throws Exception {
-        if(args.length == 0) {
+        if (args.length == 0) {
             printManpage();
             return;
         }
@@ -25,20 +25,20 @@ public class Main {
         List<EclipseBundleGradleProject> projects = findSubProjects(projectRootPath);
 
         Path subProjectsGradlePath = projectRootPath.resolve("subprojects.gradle");
-        try(InputStream stream = Main.class.getResourceAsStream("/bundlebuilder.gradle")) {
+        try (InputStream stream = Main.class.getResourceAsStream("/bundlebuilder.gradle")) {
             Files.copy(stream, subProjectsGradlePath, StandardCopyOption.REPLACE_EXISTING);
         }
         makeProjectsGradle(projects, subProjectsGradlePath);
         makeSettingsGradle(projects, projectRootPath.resolve("settings.gradle"));
         Path buildGradlePath = projectRootPath.resolve("build.gradle");
         if (!buildGradlePath.toFile().exists()) {
-            try(InputStream stream = Main.class.getResourceAsStream("/build.default.gradle")) {
+            try (InputStream stream = Main.class.getResourceAsStream("/build.default.gradle")) {
                 Files.copy(stream, buildGradlePath);
             }
         }
         Path gradlePropertiesPath = projectRootPath.resolve("gradle.properties");
         if (!gradlePropertiesPath.toFile().exists()) {
-            try(InputStream stream = Main.class.getResourceAsStream("/gradle.default.properties")) {
+            try (InputStream stream = Main.class.getResourceAsStream("/gradle.default.properties")) {
                 Files.copy(stream, gradlePropertiesPath);
             }
         }
@@ -46,9 +46,11 @@ public class Main {
         if (generateEclipseRunConfiguration(args)) {
             final String configurationName = extractEclipseRunConfigurationName(args);
             makeDevPropertiesFile(projects, projectRootPath
-                    .resolve(".metadata/.plugins/org.eclipse.pde.core/" + configurationName +"/dev.properties"));
+                    .resolve(".metadata/.plugins/org.eclipse.pde.core/" + configurationName
+                            + "/dev.properties"));
             makePlatformXmlSiteDefinition(projectRootPath, projects, projectRootPath
-                    .resolve(".metadata/.plugins/org.eclipse.pde.core/" + configurationName + "/org.eclipse.update/platform.xml"));
+                    .resolve(".metadata/.plugins/org.eclipse.pde.core/" + configurationName
+                            + "/org.eclipse.update/platform.xml"));
         }
     }
 
@@ -69,13 +71,12 @@ public class Main {
     }
 
     private static void printManpage() throws IOException {
-        try(InputStream stream = Main.class.getResourceAsStream("/manpage.txt")) {
+        try (InputStream stream = Main.class.getResourceAsStream("/manpage.txt")) {
             byte[] buf = new byte[512];
             int readb;
             while ((readb = stream.read(buf)) > 0) {
                 System.out.write(buf, 0, readb);
             }
-            return;
         }
     }
 
@@ -91,7 +92,8 @@ public class Main {
                 .collect(Collectors.toList());
     }
 
-    private static void makeProjectsGradle(List<EclipseBundleGradleProject> eclipseBundleGradleProjects, Path toGradleFile) throws Exception {
+    private static void makeProjectsGradle(List<EclipseBundleGradleProject> eclipseBundleGradleProjects,
+                                           Path toGradleFile) throws Exception {
         try (OutputStream projectsGradle = new FileOutputStream(toGradleFile.toFile(), true);
              OutputStreamWriter projectsGradleWriter = new OutputStreamWriter(projectsGradle)) {
             for (EclipseBundleGradleProject bundle : eclipseBundleGradleProjects) {
@@ -106,7 +108,8 @@ public class Main {
         }
     }
 
-    private static void makeSettingsGradle(List<EclipseBundleGradleProject> subProjectPaths, Path settingsFile) throws IOException {
+    private static void makeSettingsGradle(List<EclipseBundleGradleProject> subProjectPaths,
+                                           Path settingsFile) throws IOException {
         try (OutputStream settingsGradleOS = new FileOutputStream(settingsFile.toFile());
              OutputStreamWriter settingsGradleWriter = new OutputStreamWriter(settingsGradleOS)) {
             subProjectPaths.forEach(eclipseBundleGradleProject ->
@@ -123,14 +126,16 @@ public class Main {
         }
     }
 
-    private static void makeDevPropertiesFile(List<EclipseBundleGradleProject> subProjects, Path devPropertiesPath) throws IOException {
+    private static void makeDevPropertiesFile(List<EclipseBundleGradleProject> subProjects,
+                                              Path devPropertiesPath) throws IOException {
         Properties devProperties = new Properties();
         devProperties.setProperty("@ignoredot@", "true");
 
         subProjects.stream()
                 .map(EclipseBundleGradleProject::readBundleManifest)
                 .forEach(bundleManifest -> {
-                    String symbolicBundleName = bundleManifest.getMainAttributes().getValue("Bundle-SymbolicName");
+                    String symbolicBundleName = bundleManifest
+                            .getMainAttributes().getValue("Bundle-SymbolicName");
                     if (symbolicBundleName == null || (symbolicBundleName = symbolicBundleName.trim()).isEmpty()) {
                         return;
                     }
