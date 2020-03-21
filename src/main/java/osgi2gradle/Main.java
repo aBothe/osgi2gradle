@@ -36,11 +36,47 @@ public class Main {
                 Files.copy(stream, buildGradlePath);
             }
         }
+        Path gradlePropertiesPath = projectRootPath.resolve("gradle.properties");
+        if (!gradlePropertiesPath.toFile().exists()) {
+            try(InputStream stream = Main.class.getResourceAsStream("/gradle.default.properties")) {
+                Files.copy(stream, gradlePropertiesPath);
+            }
+        }
 
-        makeDevPropertiesFile(projects, projectRootPath
-                .resolve(".metadata/.plugins/org.eclipse.pde.core/New_configuration/dev.properties"));
-        makePlatformXmlSiteDefinition(projectRootPath, projects, projectRootPath
-                .resolve(".metadata/.plugins/org.eclipse.pde.core/New_configuration/org.eclipse.update/platform.xml"));
+        if (generateEclipseRunConfiguration(args)) {
+            final String configurationName = extractEclipseRunConfigurationName(args);
+            makeDevPropertiesFile(projects, projectRootPath
+                    .resolve(".metadata/.plugins/org.eclipse.pde.core/" + configurationName +"/dev.properties"));
+            makePlatformXmlSiteDefinition(projectRootPath, projects, projectRootPath
+                    .resolve(".metadata/.plugins/org.eclipse.pde.core/" + configurationName + "/org.eclipse.update/platform.xml"));
+        }
+    }
+
+    private static boolean generateEclipseRunConfiguration(String[] args) {
+        return Arrays.stream(args, 0, args.length - 1)
+                .anyMatch(arg -> arg.startsWith("-eclipse"));
+    }
+
+    private static String extractEclipseRunConfigurationName(String[] args) {
+        return Arrays.stream(args, 0, args.length - 1)
+                .filter(arg -> arg.startsWith("-eclipse="))
+                .map(arg -> arg.substring("-eclipse=".length()))
+                .findFirst().orElse("New_configuration");
+    }
+
+    private static Path extractProjectRootPath(String[] args) {
+        return Paths.get(args[args.length - 1]);
+    }
+
+    private static void printManpage() throws IOException {
+        try(InputStream stream = Main.class.getResourceAsStream("/manpage.txt")) {
+            byte[] buf = new byte[512];
+            int readb;
+            while ((readb = stream.read(buf)) > 0) {
+                System.out.write(buf, 0, readb);
+            }
+            return;
+        }
     }
 
     private static List<EclipseBundleGradleProject> findSubProjects(Path projectRootPath) throws IOException {

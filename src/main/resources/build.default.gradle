@@ -28,6 +28,4 @@ subprojects {
     }
 }
 
-ext.p2Root = '/home/lx/Dokumente/Projects/eclipse'
-
 apply from: 'subprojects.gradle'

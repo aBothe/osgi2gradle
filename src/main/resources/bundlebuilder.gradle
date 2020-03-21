@@ -75,7 +75,7 @@ private def recurseP2bundle(String name, Set<String> alreadyImportedBundles) {
     if (!alreadyImportedBundles.add(name)) {
         return files()
     }
-    def pluginsFolder = Paths.get(rootProject.p2Root).resolve('plugins')
+    def pluginsFolder = Paths.get(eclipseHome).resolve('plugins')
     def jarFile = Files.walk(pluginsFolder, 1)
             .filter({ it.getName(it.getNameCount() - 1).toString().startsWith(name + '_') })
             .sorted({ a, b -> -a.toString().compareToIgnoreCase(b.toString()) })
