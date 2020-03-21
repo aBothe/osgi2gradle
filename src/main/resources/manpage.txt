@@ -45,3 +45,4 @@ Option flags:
     .metadata/.plugins/org.eclipse.pde.core/[New_configuration]/org.eclipse.update/platform.xml,
     generate a dev.properties under
     .metadata/.plugins/org.eclipse.pde.core/[New_configuration]/dev.properties
+
