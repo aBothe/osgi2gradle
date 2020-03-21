@@ -84,10 +84,12 @@ class EclipseBundleGradleProject implements Comparable<EclipseBundleGradleProjec
         return bundleProperties;
     }
 
-    Manifest readBundleManifest() throws IOException {
+    Manifest readBundleManifest() {
         Path manifestPath = buildPropertiesPath.getParent().resolve("META-INF").resolve("MANIFEST.MF");
         try (FileInputStream manifestStream = new FileInputStream(manifestPath.toFile())) {
             return new Manifest(manifestStream);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
