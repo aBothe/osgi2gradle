@@ -1,0 +1,47 @@
+osgi2gradle - Generates gradle build files for osgi-plugin Sets
+
+Folder structures may look like
+
+my_workspace/
+    /org.my.plugin1
+        /META-INF/MANIFEST.MF
+        /src/org/my/MyClassA.java
+        /build.properties
+    /org.my.plugin2
+        /META-INF/MANIFEST.MF
+        /src/org/my/MyClassB.java
+        /build.properties
+    /3rdparty
+        /org.linkedlib
+                /META-INF/MANIFEST.MF
+                /somelib.jar
+                /build.properties
+
+Invoking the program with
+java -jar osgi2gradle.jar /path/to/my_workspace
+
+generates following files in my_workspace:
+    build.gradle
+    subproject.gradle
+    settings.gradle
+    gradle.properties
+
+You have to specify a path to your local eclipse installation in order to let the dependency search look up required plugins.
+Do this by editing the eclipseHome-property in the gradle.properties.
+Also, do not commit the gradle.properties file alongside your other files - it's suited for your very local gradle setup only.
+
+
+
+Usage:
+java -jar osgi2gradle.jar [options] DEVELOPMENT_DIRECTORY
+
+DEVELOPMENT_DIRECTORY   Path to folder that contains osgi bundle folders
+    (subfolders are determined recursively by the existence
+    of a META-INF/MANIFEST.MF & build.properties)
+[options]                 one or more of the following flags
+
+Option flags:
+-eclipse[=New_configuration]    generate a platform.xml under
+    .metadata/.plugins/org.eclipse.pde.core/[New_configuration]/org.eclipse.update/platform.xml,
+    generate a dev.properties under
+    .metadata/.plugins/org.eclipse.pde.core/[New_configuration]/dev.properties

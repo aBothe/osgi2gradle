@@ -16,7 +16,12 @@ import java.util.stream.Collectors;
 public class Main {
 
     public static void main(String[] args) throws Exception {
-        final Path projectRootPath = Paths.get("/home/lx/Dokumente/Projects/eclipse-workspace");
+        if(args.length == 0) {
+            printManpage();
+            return;
+        }
+
+        final Path projectRootPath = extractProjectRootPath(args);
         List<EclipseBundleGradleProject> projects = findSubProjects(projectRootPath);
 
         Path subProjectsGradlePath = projectRootPath.resolve("subprojects.gradle");
