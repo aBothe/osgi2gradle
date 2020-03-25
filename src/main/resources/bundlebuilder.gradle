@@ -1,6 +1,7 @@
 import org.w3c.dom.Document
 import org.w3c.dom.Element
 import javax.xml.parsers.DocumentBuilderFactory
+import java.nio.file.Paths
 import java.util.regex.Pattern
 import java.util.stream.Collectors
 import java.util.stream.IntStream
@@ -81,7 +82,13 @@ class P2RepositoryLoader {
     private final URI repositoryUri
     private final java.nio.file.Path basePath
     private final java.nio.file.Path pluginsPath
-    private Map<String, String> bundleVersions
+
+    static class BundleAttributes {
+        String version
+        boolean isDirectory
+    }
+
+    private Map<String, BundleAttributes> bundleVersions
 
     P2RepositoryLoader(URI repository, java.nio.file.Path projectBasePath) {
         this.repositoryUri = repository
@@ -94,30 +101,57 @@ class P2RepositoryLoader {
         if (bundleVersions == null) {
             bundleVersions = getAvailableArtifactVersions()
         }
-        if (bundleVersions.get(bundleId) == null) {
+        def bundleAttributes = bundleVersions.get(bundleId)
+        if (bundleAttributes == null) {
             throw new Exception("Couldn't find bundle " + bundleId + " in repo " + repositoryUri.toString())
         }
 
-        String jarName = bundleId + "_" + bundleVersions.get(bundleId) + '.jar'
+        if (bundleAttributes.isDirectory) {
+            return Paths.get(repositoryUri.resolve("plugins/").resolve(bundleId + "_" + bundleAttributes.version))
+        }
+
+        String jarName = bundleId + "_" + bundleAttributes.version + '.jar'
         java.nio.file.Path bundlePath = pluginsPath.resolve(jarName)
         downloadFile(repositoryUri.resolve("plugins/").resolve(jarName).toURL(), bundlePath)
         return bundlePath
     }
 
-    def getAvailableArtifactVersions() {
+    Map<String, BundleAttributes> getAvailableArtifactVersions() {
         def artifactDom = getArtifactsDefinition()
         def repositoryElement = (Element) artifactDom.getElementsByTagName("repository").item(0)
         def artifactsElement = (Element) repositoryElement.getElementsByTagName("artifacts").item(0)
         def artifactsElements = artifactsElement.getElementsByTagName("artifact")
-        return IntStream
-                .range(0, artifactsElements.getLength())
+        return IntStream.range(0, artifactsElements.getLength())
                 .mapToObj({ (Element) artifactsElements.item(it) })
                 .filter({ 'osgi.bundle'.equalsIgnoreCase(it.getAttribute('classifier')) })
-                .collect(Collectors.<Element, String, String> toMap(
+                .collect(Collectors.<Element, String, BundleAttributes> toMap(
                         { it.getAttribute("id") },
-                        { it.getAttribute("version") },
-                        { version1, version2 -> version1.numberAwareCompareTo(version2) > 0 ? version1 : version2 }
+                        { mapBundleElement(it as Element) },
+                        { version1, version2 ->
+                            version1.version.numberAwareCompareTo(version2.version) > 0 ? version1 : version2
+                        }
                 ))
+    }
+
+    static BundleAttributes mapBundleElement(Element bundleElement) {
+        def bundle = new BundleAttributes()
+        bundle.version = bundleElement.getAttribute("version")
+        bundle.isDirectory = isDirectoryBundle(bundleElement)
+        return bundle
+    }
+
+    static boolean isDirectoryBundle(Element bundleElement) {
+        def repoPropertiesElement = bundleElement.getElementsByTagName("repositoryProperties")
+        if (repoPropertiesElement.length == 0) {
+            return false
+        }
+        def repoProperties = (repoPropertiesElement.item(0) as Element).getElementsByTagName("property")
+        return IntStream.range(0, repoProperties.getLength())
+                .mapToObj({ (Element) repoProperties.item(it) })
+                .filter({ 'artifact.folder' == it.getAttribute('name') })
+                .map({ Boolean.valueOf(it.getAttribute('value')) })
+                .findFirst()
+                .orElse(Boolean.FALSE)
     }
 
     Document getArtifactsDefinition() {
@@ -161,7 +195,7 @@ class P2RepositoryLoader {
         }
         try {
             new FileOutputStream(toFile).withStream { outputStream ->
-                println 'download ' + url.toString()
+                print 'download ' + url.toString()
                 url.openStream().withStream { inputStream ->
                     def buffer = new byte[1024]
                     int readbytes
@@ -169,6 +203,7 @@ class P2RepositoryLoader {
                         outputStream.write(buffer, 0, readbytes)
                     }
                 }
+                println ' - finished'
                 return null
             }
             return true
