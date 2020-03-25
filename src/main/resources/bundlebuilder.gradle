@@ -1,8 +1,14 @@
-import java.nio.file.Files
-import java.nio.file.Paths
+import org.w3c.dom.Document
+import org.w3c.dom.Element
+import javax.xml.parsers.DocumentBuilderFactory
 import java.util.regex.Pattern
 import java.util.stream.Collectors
+import java.util.stream.IntStream
+import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
+import java.util.zip.ZipInputStream
+
+apply plugin: 'base'
 
 class Properties {
     static reexportedBundlePattern =
@@ -51,7 +57,7 @@ private static List<String> readBundleClasspath(java.util.jar.Manifest manifest)
 }
 
 private def analyzeBundleForTransitiveDependencies(java.nio.file.Path ofBundle, Set<String> alreadyImportedBundles) {
-    final def manifest = readBundleManifest(ofBundle);
+    final def manifest = readBundleManifest(ofBundle)
     def requiredBundles = readReexportedRequiredBundles(manifest)
     def bundleJarsToAdd = files()
     def nestedJarsOnClasspath = readBundleClasspath(manifest)
@@ -71,22 +77,118 @@ private def analyzeBundleForTransitiveDependencies(java.nio.file.Path ofBundle, 
     return bundleJarsToAdd
 }
 
+class P2RepositoryLoader {
+    private final URI repositoryUri
+    private final java.nio.file.Path basePath
+    private final java.nio.file.Path pluginsPath
+    private Map<String, String> bundleVersions
+
+    P2RepositoryLoader(URI repository, java.nio.file.Path projectBasePath) {
+        this.repositoryUri = repository
+        this.basePath = projectBasePath.resolve('.p2cache')
+        this.pluginsPath = basePath.resolve("plugins")
+        this.pluginsPath.toFile().mkdirs()
+    }
+
+    def getBundleFromRepository(String bundleId) {
+        if (bundleVersions == null) {
+            bundleVersions = getAvailableArtifactVersions()
+        }
+        if (bundleVersions.get(bundleId) == null) {
+            throw new Exception("Couldn't find bundle " + bundleId + " in repo " + repositoryUri.toString())
+        }
+
+        String jarName = bundleId + "_" + bundleVersions.get(bundleId) + '.jar'
+        java.nio.file.Path bundlePath = pluginsPath.resolve(jarName)
+        downloadFile(repositoryUri.resolve("plugins/").resolve(jarName).toURL(), bundlePath)
+        return bundlePath
+    }
+
+    def getAvailableArtifactVersions() {
+        def artifactDom = getArtifactsDefinition()
+        def repositoryElement = (Element) artifactDom.getElementsByTagName("repository").item(0)
+        def artifactsElement = (Element) repositoryElement.getElementsByTagName("artifacts").item(0)
+        def artifactsElements = artifactsElement.getElementsByTagName("artifact")
+        return IntStream
+                .range(0, artifactsElements.getLength())
+                .mapToObj({ (Element) artifactsElements.item(it) })
+                .filter({ 'osgi.bundle'.equalsIgnoreCase(it.getAttribute('classifier')) })
+                .collect(Collectors.<Element, String, String> toMap(
+                        { it.getAttribute("id") },
+                        { it.getAttribute("version") },
+                        { version1, version2 -> version1.numberAwareCompareTo(version2) > 0 ? version1 : version2 }
+                ))
+    }
+
+    Document getArtifactsDefinition() {
+        def artifactsJar = basePath.resolve("artifacts.jar")
+        def artifactsXml = basePath.resolve("artifacts.xml")
+        if (downloadFile(repositoryUri.resolve("artifacts.jar").toURL(), artifactsJar, true)) {
+            unzipArtifactsJar(artifactsJar, artifactsXml)
+        } else {
+            downloadFile(repositoryUri.resolve("artifacts.xml").toURL(), artifactsXml)
+        }
+        return DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(artifactsXml.toFile())
+    }
+
+    static def unzipArtifactsJar(java.nio.file.Path artifactsJar, java.nio.file.Path toArtifactsXml) {
+        if (toArtifactsXml.toFile().exists()) {
+            return
+        }
+        new FileInputStream(artifactsJar.toFile()).withStream {
+            new ZipInputStream(it).withStream { zipStream ->
+                ZipEntry zipEntry
+                while ((zipEntry = zipStream.getNextEntry()) != null) {
+                    if (!zipEntry.getName().toLowerCase().equals('artifacts.xml')) {
+                        continue
+                    }
+                    new FileOutputStream(toArtifactsXml.toFile()).withStream {
+                        def buffer = new byte[1024]
+                        int readbytes
+                        while ((readbytes = zipStream.read(buffer)) > 0) {
+                            it.write(buffer, 0, readbytes)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    static boolean downloadFile(URL url, java.nio.file.Path toPath, boolean ignore404Responses = false) {
+        def toFile = toPath.toFile()
+        if (toFile.exists()) {
+            return true
+        }
+        try {
+            new FileOutputStream(toFile).withStream { outputStream ->
+                println 'download ' + url.toString()
+                url.openStream().withStream { inputStream ->
+                    def buffer = new byte[1024]
+                    int readbytes
+                    while ((readbytes = inputStream.read(buffer)) > 0) {
+                        outputStream.write(buffer, 0, readbytes)
+                    }
+                }
+                return null
+            }
+            return true
+        } catch (IOException e) {
+            if (ignore404Responses) {
+                return false
+            }
+            toFile.delete()
+            throw e
+        }
+    }
+}
+
+ext.p2Repo = new P2RepositoryLoader(new URI(eclipseRepository + '/'), projectDir.toPath())
+
 private def recurseP2bundle(String name, Set<String> alreadyImportedBundles) {
     if (!alreadyImportedBundles.add(name)) {
         return files()
     }
-    def pluginsFolder = Paths.get(eclipseHome).resolve('plugins')
-    def jarFile = Files.walk(pluginsFolder, 1)
-            .filter({ it.getName(it.getNameCount() - 1).toString().startsWith(name + '_') })
-            .sorted({ a, b -> -a.toString().compareToIgnoreCase(b.toString()) })
-            .findFirst()
-            .orElseGet({
-                println 'Couldnt find (maybe optional?) bundle + ' name
-                return null
-            })
-    if (jarFile == null) {
-        return files()
-    }
+    def jarFile = ((P2RepositoryLoader) ext.p2Repo).getBundleFromRepository(name)
 
     FileCollection dependencies
     if (jarFile.toFile().isDirectory()) {
@@ -98,6 +200,10 @@ private def recurseP2bundle(String name, Set<String> alreadyImportedBundles) {
     return dependencies;
 }
 
+clean {
+    delete '.p2cache'
+}
+
 def p2bundle(String name, String version = '') {
     def cacheKey = name + version
     if (Properties.cachedResolvedBundles.containsKey(cacheKey)) {
@@ -107,10 +213,5 @@ def p2bundle(String name, String version = '') {
     Properties.cachedResolvedBundles.put(cacheKey, resolvedDependencies)
     return resolvedDependencies
 }
-
-
-
-
-
 
 
