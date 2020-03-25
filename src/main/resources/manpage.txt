@@ -26,9 +26,10 @@ generates following files in my_workspace:
     settings.gradle
     gradle.properties
 
-You have to specify a path to your local eclipse installation in order to let the dependency search look up required plugins.
-Do this by editing the eclipseHome-property in the gradle.properties.
-Also, do not commit the gradle.properties file alongside your other files - it's suited for your very local gradle setup only.
+You have to specify a URL to either your local or remotely located eclipse installation in order to let the dependency search look up required plugins.
+Do this by editing the eclipseRepository-property in the gradle.properties.
+
+Note: In case of a local eclipse repo, do not commit the gradle.properties file alongside your other files - it's suited for your very local gradle setup only.
 
 
 
