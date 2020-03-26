@@ -99,7 +99,9 @@ class P2RepositoryLoader {
 
     def getBundleFromRepository(String bundleId) {
         if (bundleVersions == null) {
+            print 'Get artifacts definition from ' + repositoryUri.toString()
             bundleVersions = getAvailableArtifactVersions()
+            println ' - finished. Found ' + bundleVersions.size() + ' osgi bundles'
         }
         def bundleAttributes = bundleVersions.get(bundleId)
         if (bundleAttributes == null) {
