@@ -171,19 +171,13 @@ class P2RepositoryLoader {
         if (toArtifactsXml.toFile().exists()) {
             return
         }
-        new FileInputStream(artifactsJar.toFile()).withStream {
-            new ZipInputStream(it).withStream { zipStream ->
-                ZipEntry zipEntry
-                while ((zipEntry = zipStream.getNextEntry()) != null) {
-                    if (!zipEntry.getName().toLowerCase().equals('artifacts.xml')) {
-                        continue
-                    }
-                    new FileOutputStream(toArtifactsXml.toFile()).withStream {
-                        def buffer = new byte[1024]
-                        int readbytes
-                        while ((readbytes = zipStream.read(buffer)) > 0) {
-                            it.write(buffer, 0, readbytes)
-                        }
+        new ZipFile(artifactsJar.toFile()).withCloseable {
+            it.getInputStream(it.getEntry('artifacts.xml')).withCloseable { inputStream ->
+                new FileOutputStream(toArtifactsXml.toFile()).withCloseable {
+                    def buffer = new byte[1024]
+                    int readbytes
+                    while ((readbytes = inputStream.read(buffer)) > 0) {
+                        it.write(buffer, 0, readbytes)
                     }
                 }
             }
@@ -196,9 +190,9 @@ class P2RepositoryLoader {
             return true
         }
         try {
-            new FileOutputStream(toFile).withStream { outputStream ->
+            new FileOutputStream(toFile).withCloseable { outputStream ->
                 print 'download ' + url.toString()
-                url.openStream().withStream { inputStream ->
+                url.openStream().withCloseable { inputStream ->
                     def buffer = new byte[1024]
                     int readbytes
                     while ((readbytes = inputStream.read(buffer)) > 0) {
