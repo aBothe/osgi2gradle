@@ -23,7 +23,13 @@ subprojects {
         mavenCentral()
     }
 
-    sourceSets.test.java.srcDirs = ['test/']
+    sourceSets {
+        main {
+            output.resourcesDir = file('bin')
+            java.outputDir = file('bin')
+        }
+        test.java.srcDirs = ['test/']
+    }
 
     test {
         ignoreFailures = true
