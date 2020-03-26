@@ -67,7 +67,7 @@ private def analyzeBundleForTransitiveDependencies(java.nio.file.Path ofBundle, 
             bundleJarsToAdd += fileTree(dir: ofBundle, includes: nestedJarsOnClasspath)
         } else {
             bundleJarsToAdd += zipTree(ofBundle).filter {
-                File file -> nestedJarsOnClasspath.stream().anyMatch({ file.path.endsWith(it) })
+                File file -> nestedJarsOnClasspath.stream().anyMatch({ file.path.replace('\\','/').endsWith(it) })
             }
         }
     }
