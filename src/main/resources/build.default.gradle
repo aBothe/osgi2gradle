@@ -8,6 +8,8 @@ subprojects {
         //providedCompile group: 'org.osgi', name: 'org.osgi.core', version: '6.0.0'
     }
 
+    // compileJava.options.encoding = 'windows-1252'
+
     jar {
         manifest {
             def manif = "${projectDir}/META-INF/MANIFEST.MF"
