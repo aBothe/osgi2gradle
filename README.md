@@ -62,5 +62,20 @@ Then you'll be able run a default `gradle build` in your `/path/to/workspaceroot
 ## Concepts
 This build-tool is a by-hand corner-cutting approach to build eclipse RDP projects in eclipse-less environments.
 
+## Limitations
+As this project is just cutting corners to get code built, many features of P2 or Equinox are not reimplemented.
+
+What's implemented:
+* Reading artifacts.jar
+* Reading artifacts.xml to build a metainfo cache about what external bundles there are available
+* Reading a plugin's META-INF/MANIFEST.MF
+  * Required-Bundle
+  * Bundle-Classpath
+  * Bundle-SymbolicName
+
+What's not implemented:
+* Recognizing Imported/Exported packages
+* Bundle versions as part of Required-Bundle definitions
+
 ## Contribute
 If you want to enrichen my simple approach, feel free to open issues or PRs!
