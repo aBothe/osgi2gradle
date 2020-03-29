@@ -12,7 +12,7 @@ Creates gradle-files around bundle-based Eclipse OSGI projects in order to get e
 
 Assume there's a eclipse workspace-like filetree featuring different plugins to be built:
 ```
-projectroot/
+workspaceroot/
   trunk1/
     pluginA/
       META-INF/MANIFEST.MF
@@ -42,10 +42,10 @@ https://my.update.site/somewhere
 
 ## Usage
 
-Now, run the following command:
+Now, run the following command to first build osgi2gradle, then execute it:
 ```
 gradle build
-java -jar build/libs/osgi2gradle /path/to/workspace
+java -jar build/libs/osgi2gradle /path/to/workspaceroot
 ```
 
 Running osgi2gradle will generate a set of gradle files in your workspace:
@@ -57,7 +57,7 @@ Set
 * `eclipseRepository=https://my.update.site/somewhere` (or if local)
 * `eclipseRepository=file://C:/dev/mylocaleclipse/eclipse`
 
-Then you'll be able run a default `gradle build` in your `/path/to/workspace`.
+Then you'll be able run a default `gradle build` in your `/path/to/workspaceroot`.
 
 ## Concepts
 This build-tool is a by-hand corner-cutting approach to build eclipse RDP projects in eclipse-less environments.
