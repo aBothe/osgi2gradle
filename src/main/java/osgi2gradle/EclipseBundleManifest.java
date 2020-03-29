@@ -40,13 +40,21 @@ class EclipseBundleManifest {
     void declareArchiveOutputNames(EclipseBundleGradleProject project,
                                    OutputStreamWriter projectsGradleWriter) throws IOException {
         String bundleSymbolicName = bundleManifest.getMainAttributes().getValue("Bundle-SymbolicName");
+        projectsGradleWriter
+                .append("\tjar.archiveBaseName = '")
+                .append((bundleSymbolicName != null ? bundleSymbolicName : "").trim())
+                .append("'\r\n");
         String bundleVersion = bundleManifest.getMainAttributes().getValue("Bundle-Version");
+        projectsGradleWriter
+                .append("\tjar.archiveVersion = '")
+                .append((bundleVersion != null ? bundleVersion : "").trim())
+                .append("'\r\n");
         projectsGradleWriter
                 .append("\tjar.archiveFileName = '")
                 .append((bundleSymbolicName != null ? bundleSymbolicName : "").trim())
                 .append('_')
                 .append((bundleVersion != null ? bundleVersion : "").trim())
-                .append(".jar'\r\n");
+                .append(".jar'\r\n\r\n");
     }
 
     void declareProjectDependencies(List<EclipseBundleGradleProject> availableProjects,

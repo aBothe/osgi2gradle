@@ -31,4 +31,18 @@ subprojects {
     }
 }
 
+task createEclipseBundle(type:Zip, dependsOn: subprojects.build){
+    archiveBaseName = "dist"
+    destinationDirectory = file("${buildDir}")
+
+    from ('.p2cache/plugins')
+
+    subprojects.each {
+        if (it.projectDir.toPath().resolve('build.properties').toFile().exists()) {
+            from it.jar.archiveFile
+            into 'plugins'
+        }
+    }
+}
+
 apply from: 'subprojects.gradle'
