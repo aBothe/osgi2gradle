@@ -1,14 +1,9 @@
 
-
 subprojects {
     apply plugin: 'java'
 
-    dependencies {
-        //implementation group: 'org.osgi', name: 'osgi.core', version: '7.0.0'
-        //providedCompile group: 'org.osgi', name: 'org.osgi.core', version: '6.0.0'
-    }
-
     // compileJava.options.encoding = 'windows-1252'
+    // compileTestJava.options.encoding = 'windows-1252'
 
     jar {
         manifest {
