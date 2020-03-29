@@ -100,8 +100,9 @@ public class Main {
                 bundle.declareProjectSignature(projectsGradleWriter);
                 bundle.declareProjectSourceSets(projectsGradleWriter);
 
-                new EclipseBundleManifest(bundle.readBundleManifest())
-                        .declareProjectDependencies(eclipseBundleGradleProjects, projectsGradleWriter);
+                EclipseBundleManifest bundleManifest = new EclipseBundleManifest(bundle.readBundleManifest());
+                bundleManifest.declareArchiveOutputNames(bundle, projectsGradleWriter);
+                bundleManifest.declareProjectDependencies(eclipseBundleGradleProjects, projectsGradleWriter);
 
                 bundle.declareProjectEnd(projectsGradleWriter);
             }

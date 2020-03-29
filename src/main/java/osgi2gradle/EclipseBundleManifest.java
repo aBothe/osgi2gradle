@@ -37,6 +37,18 @@ class EclipseBundleManifest {
         }
     }
 
+    void declareArchiveOutputNames(EclipseBundleGradleProject project,
+                                   OutputStreamWriter projectsGradleWriter) throws IOException {
+        String bundleSymbolicName = bundleManifest.getMainAttributes().getValue("Bundle-SymbolicName");
+        String bundleVersion = bundleManifest.getMainAttributes().getValue("Bundle-Version");
+        projectsGradleWriter
+                .append("\tjar.archiveFileName = '")
+                .append((bundleSymbolicName != null ? bundleSymbolicName : "").trim())
+                .append('_')
+                .append((bundleVersion != null ? bundleVersion : "").trim())
+                .append(".jar'\r\n");
+    }
+
     void declareProjectDependencies(List<EclipseBundleGradleProject> availableProjects,
                                     OutputStreamWriter projectsGradleWriter) throws IOException {
         if (hasNoDependency()) {
