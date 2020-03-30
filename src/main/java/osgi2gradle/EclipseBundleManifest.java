@@ -40,9 +40,18 @@ class EclipseBundleManifest {
     void declareArchiveOutputNames(EclipseBundleGradleProject project,
                                    OutputStreamWriter projectsGradleWriter) throws IOException {
         String bundleSymbolicName = bundleManifest.getMainAttributes().getValue("Bundle-SymbolicName");
+        if(bundleSymbolicName == null) {
+            bundleSymbolicName = project.gradleSubprojectName;
+        }
+        bundleSymbolicName = bundleSymbolicName.trim();
+        int firstAttributeSemicolonIndex = bundleSymbolicName.indexOf(';');
+        if(firstAttributeSemicolonIndex > -1) {
+            bundleSymbolicName = bundleSymbolicName.substring(0, firstAttributeSemicolonIndex);
+        }
+
         projectsGradleWriter
                 .append("\tjar.archiveBaseName = '")
-                .append((bundleSymbolicName != null ? bundleSymbolicName : "").trim())
+                .append(bundleSymbolicName)
                 .append("'\r\n");
         String bundleVersion = bundleManifest.getMainAttributes().getValue("Bundle-Version");
         projectsGradleWriter
@@ -51,7 +60,7 @@ class EclipseBundleManifest {
                 .append("'\r\n");
         projectsGradleWriter
                 .append("\tjar.archiveFileName = '")
-                .append((bundleSymbolicName != null ? bundleSymbolicName : "").trim())
+                .append(bundleSymbolicName)
                 .append('_')
                 .append((bundleVersion != null ? bundleVersion : "").trim())
                 .append(".jar'\r\n\r\n");
