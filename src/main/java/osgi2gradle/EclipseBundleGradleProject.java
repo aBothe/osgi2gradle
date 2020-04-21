@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.jar.Manifest;
 import java.util.stream.Collectors;
@@ -84,10 +85,13 @@ class EclipseBundleGradleProject implements Comparable<EclipseBundleGradleProjec
         return bundleProperties;
     }
 
-    Manifest readBundleManifest() {
+    Optional<Manifest> readBundleManifest() {
         Path manifestPath = buildPropertiesPath.getParent().resolve("META-INF").resolve("MANIFEST.MF");
+        if (!manifestPath.toFile().exists()) {
+            return Optional.empty();
+        }
         try (FileInputStream manifestStream = new FileInputStream(manifestPath.toFile())) {
-            return new Manifest(manifestStream);
+            return Optional.of(new Manifest(manifestStream));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

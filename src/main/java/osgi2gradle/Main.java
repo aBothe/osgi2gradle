@@ -100,9 +100,15 @@ public class Main {
                 bundle.declareProjectSignature(projectsGradleWriter);
                 bundle.declareProjectSourceSets(projectsGradleWriter);
 
-                EclipseBundleManifest bundleManifest = new EclipseBundleManifest(bundle.readBundleManifest());
-                bundleManifest.declareArchiveOutputNames(bundle, projectsGradleWriter);
-                bundleManifest.declareProjectDependencies(eclipseBundleGradleProjects, projectsGradleWriter);
+                bundle.readBundleManifest().ifPresent(manifest -> {
+                    EclipseBundleManifest bundleManifest = new EclipseBundleManifest(manifest);
+                    try {
+                        bundleManifest.declareArchiveOutputNames(bundle, projectsGradleWriter);
+                        bundleManifest.declareProjectDependencies(eclipseBundleGradleProjects, projectsGradleWriter);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
 
                 bundle.declareProjectEnd(projectsGradleWriter);
             }
@@ -134,6 +140,8 @@ public class Main {
 
         subProjects.stream()
                 .map(EclipseBundleGradleProject::readBundleManifest)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
                 .forEach(bundleManifest -> {
                     String symbolicBundleName = bundleManifest
                             .getMainAttributes().getValue("Bundle-SymbolicName");
