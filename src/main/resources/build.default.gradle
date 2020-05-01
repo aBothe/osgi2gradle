@@ -15,6 +15,7 @@ subprojects {
     }
 
     buildDir = file("${rootProject.projectDir}/build_sub/${name}")
+    libsDirectory.value(rootProject.getLayout().getProjectDirectory().dir("build_sub/libs"))
 
     repositories {
         mavenCentral()
