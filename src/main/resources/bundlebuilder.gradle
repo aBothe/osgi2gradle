@@ -108,7 +108,7 @@ class P2RepositoryLoader {
         }
         def bundleAttributes = bundleVersions.get(bundleId)
         if (bundleAttributes == null) {
-            throw new Exception("Couldn't find bundle " + bundleId + " in repo " + repositoryUri.toString())
+            throw new RuntimeException("Couldn't find bundle " + bundleId + " in repo " + repositoryUri.toString())
         }
 
         if (bundleAttributes.isDirectory) {
@@ -247,5 +247,14 @@ def p2bundle(String name, String version = '') {
     Properties.cachedResolvedBundles.put(cacheKey, resolvedDependencies)
     return resolvedDependencies
 }
+
+p2bundle('org.eclipse.osgi');
+p2bundle('org.eclipse.equinox.simpleconfigurator');
+p2bundle('org.eclipse.fx.osgi');
+p2bundle('org.eclipse.equinox.ds');
+p2bundle('org.eclipse.equinox.internal.util');
+p2bundle('org.eclipse.osgi.services');
+
+
 
 
