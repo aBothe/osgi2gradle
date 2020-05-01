@@ -39,7 +39,7 @@ private static List<String> readReexportedRequiredBundles(java.util.jar.Manifest
     def matcher = Properties.reexportedBundlePattern.matcher(bundlesListAttribute)
     def results = new ArrayList<String>()
     for (int startIndex = 0; matcher.find(startIndex); startIndex = matcher.end()) {
-        if (matcher.group().contains("visibility:=reexport") && !matcher.group().contains("resolution:=optional")) {
+        if (!matcher.group().contains("resolution:=optional")) {
             results.add(matcher.group(1))
         }
     }
