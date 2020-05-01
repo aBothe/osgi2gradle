@@ -98,6 +98,9 @@ class P2RepositoryLoader {
     }
 
     def getBundleFromRepository(String bundleId) {
+        if (bundleId == 'system.bundle') {
+            bundleId = 'org.eclipse.osgi'
+        }
         if (bundleVersions == null) {
             print 'Get artifacts definition from ' + repositoryUri.toString()
             bundleVersions = getAvailableArtifactVersions()
