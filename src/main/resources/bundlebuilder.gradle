@@ -9,10 +9,32 @@ import java.util.zip.ZipFile
 
 apply plugin: 'base'
 
+class BundleInfo implements Comparable<BundleInfo> {
+    String id
+    String version
+    String path
+
+    @Override
+    int hashCode() {
+        return path.hashCode()
+    }
+
+    @Override
+    boolean equals(Object obj) {
+        return obj instanceof BundleInfo && ((BundleInfo) obj).path.equals(path)
+    }
+
+    @Override
+    int compareTo(BundleInfo bundleInfo) {
+        return path.compareTo(bundleInfo.path)
+    }
+}
+
 class Properties {
     static reexportedBundlePattern =
             Pattern.compile('([\\w-._]+)(;[\\w-]+:?=("[^"]+"|[^,;]+))*')
     static cachedResolvedBundles = new HashMap<String, FileCollection>()
+    static installedBundles = new TreeSet<BundleInfo>();
 }
 
 Properties.cachedResolvedBundles.clear()
@@ -47,7 +69,7 @@ private static List<String> readReexportedRequiredBundles(java.util.jar.Manifest
 }
 
 private static List<String> readBundleClasspath(java.util.jar.Manifest manifest) {
-    final def bundlesListAttribute = manifest.getMainAttributes().getValue("Bundle-ClassPath");
+    final def bundlesListAttribute = manifest.getMainAttributes().getValue("Bundle-ClassPath")
     if (bundlesListAttribute == null) {
         return Collections.emptyList()
     }
@@ -55,6 +77,19 @@ private static List<String> readBundleClasspath(java.util.jar.Manifest manifest)
             .map({ it.trim() })
             .filter({ !".".equals(it) })
             .collect(Collectors.toList())
+}
+
+private static def enlistInstalledBundle(java.util.jar.Manifest manifest, java.nio.file.Path ofBundle) {
+    def bundle = new BundleInfo()
+    bundle.id = manifest.getMainAttributes().getValue("Bundle-SymbolicName")
+    def semicolonIndex = bundle.id.indexOf(';') // that singleton-name attribute...
+    if (semicolonIndex != -1) {
+        bundle.id = bundle.id.substring(0, semicolonIndex)
+    }
+    bundle.version = manifest.getMainAttributes().getValue("Bundle-Version")
+    bundle.path = ofBundle
+
+    Properties.installedBundles.add(bundle)
 }
 
 private def analyzeBundleForTransitiveDependencies(java.nio.file.Path ofBundle, Set<String> alreadyImportedBundles) {
@@ -71,6 +106,8 @@ private def analyzeBundleForTransitiveDependencies(java.nio.file.Path ofBundle, 
             }
         }
     }
+
+    enlistInstalledBundle(manifest, ofBundle)
 
     requiredBundles.stream()
             .map({ recurseP2bundle(it, alreadyImportedBundles) })
@@ -254,6 +291,32 @@ p2bundle('org.eclipse.fx.osgi');
 p2bundle('org.eclipse.equinox.ds');
 p2bundle('org.eclipse.equinox.internal.util');
 p2bundle('org.eclipse.osgi.services');
+def generateBundlesInfo() {
+    file('.p2cache/bundles.info').withWriter { w ->
+        w.writeLine('#encoding=UTF-8')
+        w.writeLine('#version=1')
+        Properties.installedBundles.each {
+            String activation = '4,false'
+            if (it.id.contains('org.eclipse') || it.id.contains('org.osgi')) {
+                activation = '2,true'
+            }
+            w.writeLine(it.id + ',' + it.version + ',' + it.path + ',' + activation)
+        }
+        subprojects.stream()
+                .filter { it.projectDir.toPath().resolve('build.properties').toFile().exists()}
+                .sorted({a, b -> a.name.compareTo(b.name)})
+                .each {
+                    def jarTask = it.getTasksByName('jar', false).first()
+                    w.writeLine(jarTask.archiveBaseName.get() + ',' + jarTask.archiveVersion.get() + ',' + it.projectDir.toString() + ',4,false')
+                }
+    }
+}
+
+assemble {
+    doFirst {
+        generateBundlesInfo()
+    }
+}
 
 
 
