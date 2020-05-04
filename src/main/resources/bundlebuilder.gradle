@@ -338,6 +338,7 @@ def generateBundlesInfo(boolean isTemplate) {
 
 build {
     doFirst {
+        mkdir rootProject.buildDir
         generateBundlesInfo(false)
         generateBundlesInfo(true)
     }
