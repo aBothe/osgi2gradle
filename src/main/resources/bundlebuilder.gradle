@@ -319,7 +319,7 @@ def generateBundlesInfo() {
                 .each {
                     def jarTask = it.getTasksByName('jar', false).first()
                     def bundleId = jarTask.archiveBaseName.get()
-                    w.writeLine(bundleId + ',' + jarTask.archiveVersion.get() + ',' + formatBundlesInfoPath(it.projectDir.toString()) + ',' + determineBundleActivation(bundleId))
+                    w.writeLine(bundleId + ',' + jarTask.archiveVersion.get() + ',' + formatBundlesInfoPath(it.projectDir.toString()) + '/,' + determineBundleActivation(bundleId))
                 }
     }
 }
