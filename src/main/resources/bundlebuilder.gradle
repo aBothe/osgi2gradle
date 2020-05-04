@@ -327,11 +327,11 @@ def generateBundlesInfo(boolean isTemplate) {
                     def bundleId = jarTask.archiveBaseName.get()
                     w.write(bundleId + ',' + jarTask.archiveVersion.get() + ',')
                     if (!isTemplate) {
-                        w.write(formatBundlesInfoPath(it.projectDir.toString()))
+                        w.write(formatBundlesInfoPath(it.projectDir.toString()) + '/')
                     } else {
                         w.write('project:/' + jarTask.archiveFileName.get())
                     }
-                    w.writeLine('/,' + determineBundleActivation(bundleId))
+                    w.writeLine(',' + determineBundleActivation(bundleId))
                 }
     }
 }
