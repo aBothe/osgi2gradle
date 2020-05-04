@@ -289,23 +289,37 @@ static def formatBundlesInfoPath(String path) {
     return 'file:/' + path.replace('\\', '/')
 }
 
+def determineBundleActivation(String bundleId) {
+    switch(bundleId) {
+        case 'org.eclipse.osgi':
+            return '-1,true'
+        case 'org.eclipse.core.runtime':
+            return '4,true'
+        case 'org.eclipse.equinox.common':
+            return '2,true'
+        case 'org.eclipse.equinox.ds':
+            return '1,true'
+        case 'org.eclipse.equinox.simpleconfigurator':
+            return '1,true'
+        default:
+            return '4,false'
+    }
+}
+
 def generateBundlesInfo() {
     file('.p2cache/bundles.info').withWriter { w ->
         w.writeLine('#encoding=UTF-8')
         w.writeLine('#version=1')
         Properties.installedBundles.each {
-            String activation = '4,false'
-            if (it.id.contains('org.eclipse') || it.id.contains('org.osgi')) {
-                activation = '2,true'
-            }
-            w.writeLine(it.id + ',' + it.version + ',' + formatBundlesInfoPath(it.path) + ',' + activation)
+            w.writeLine(it.id + ',' + it.version + ',' + formatBundlesInfoPath(it.path) + ',' + determineBundleActivation(it.id))
         }
         subprojects.stream()
                 .filter { it.projectDir.toPath().resolve('META-INF').resolve('MANIFEST.MF').toFile().exists()}
                 .sorted({a, b -> a.name.compareTo(b.name)})
                 .each {
                     def jarTask = it.getTasksByName('jar', false).first()
-                    w.writeLine(jarTask.archiveBaseName.get() + ',' + jarTask.archiveVersion.get() + ',' + formatBundlesInfoPath(it.projectDir.toString()) + ',4,false')
+                    def bundleId = jarTask.archiveBaseName.get()
+                    w.writeLine(bundleId + ',' + jarTask.archiveVersion.get() + ',' + formatBundlesInfoPath(it.projectDir.toString()) + ',' + determineBundleActivation(bundleId))
                 }
     }
 }
