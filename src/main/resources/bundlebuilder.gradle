@@ -12,7 +12,7 @@ apply plugin: 'base'
 class BundleInfo implements Comparable<BundleInfo> {
     String id
     String version
-    String path
+    java.nio.file.Path path
 
     @Override
     int hashCode() {
@@ -306,12 +306,18 @@ def determineBundleActivation(String bundleId) {
     }
 }
 
-def generateBundlesInfo() {
-    file('.p2cache/bundles.info').withWriter { w ->
+def generateBundlesInfo(boolean isTemplate) {
+    file("${rootProject.buildDir}/bundles.info" + (isTemplate ? '.template' : '')).withWriter { w ->
         w.writeLine('#encoding=UTF-8')
         w.writeLine('#version=1')
         Properties.installedBundles.each {
-            w.writeLine(it.id + ',' + it.version + ',' + formatBundlesInfoPath(it.path) + ',' + determineBundleActivation(it.id))
+            w.write(it.id + ',' + it.version + ',')
+            if (isTemplate) {
+                w.write('dependency:/' + it.path.getFileName().toString())
+            } else {
+                w.write(formatBundlesInfoPath(it.path.toString()))
+            }
+            w.writeLine(',' + determineBundleActivation(it.id))
         }
         subprojects.stream()
                 .filter { it.projectDir.toPath().resolve('META-INF').resolve('MANIFEST.MF').toFile().exists()}
@@ -319,14 +325,21 @@ def generateBundlesInfo() {
                 .each {
                     def jarTask = it.getTasksByName('jar', false).first()
                     def bundleId = jarTask.archiveBaseName.get()
-                    w.writeLine(bundleId + ',' + jarTask.archiveVersion.get() + ',' + formatBundlesInfoPath(it.projectDir.toString()) + '/,' + determineBundleActivation(bundleId))
+                    w.write(bundleId + ',' + jarTask.archiveVersion.get() + ',')
+                    if (!isTemplate) {
+                        w.write(formatBundlesInfoPath(it.projectDir.toString()))
+                    } else {
+                        w.write('project:/' + jarTask.archiveFileName.get())
+                    }
+                    w.writeLine('/,' + determineBundleActivation(bundleId))
                 }
     }
 }
 
 build {
     doFirst {
-        generateBundlesInfo()
+        generateBundlesInfo(false)
+        generateBundlesInfo(true)
     }
 }
 
