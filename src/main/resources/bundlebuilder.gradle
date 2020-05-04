@@ -285,6 +285,10 @@ def p2bundle(String name, String version = '') {
     return resolvedDependencies
 }
 
+static def formatBundlesInfoPath(String path) {
+    return 'file:/' + path.replace('\\', '/')
+}
+
 def generateBundlesInfo() {
     file('.p2cache/bundles.info').withWriter { w ->
         w.writeLine('#encoding=UTF-8')
@@ -294,14 +298,14 @@ def generateBundlesInfo() {
             if (it.id.contains('org.eclipse') || it.id.contains('org.osgi')) {
                 activation = '2,true'
             }
-            w.writeLine(it.id + ',' + it.version + ',' + it.path + ',' + activation)
+            w.writeLine(it.id + ',' + it.version + ',' + formatBundlesInfoPath(it.path) + ',' + activation)
         }
         subprojects.stream()
-                .filter { it.projectDir.toPath().resolve('build.properties').toFile().exists()}
+                .filter { it.projectDir.toPath().resolve('META-INF').resolve('MANIFEST.MF').toFile().exists()}
                 .sorted({a, b -> a.name.compareTo(b.name)})
                 .each {
                     def jarTask = it.getTasksByName('jar', false).first()
-                    w.writeLine(jarTask.archiveBaseName.get() + ',' + jarTask.archiveVersion.get() + ',' + it.projectDir.toString() + ',4,false')
+                    w.writeLine(jarTask.archiveBaseName.get() + ',' + jarTask.archiveVersion.get() + ',' + formatBundlesInfoPath(it.projectDir.toString()) + ',4,false')
                 }
     }
 }
