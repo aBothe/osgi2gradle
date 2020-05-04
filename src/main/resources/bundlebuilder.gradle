@@ -310,7 +310,7 @@ def generateBundlesInfo() {
     }
 }
 
-assemble {
+build {
     doFirst {
         generateBundlesInfo()
     }
