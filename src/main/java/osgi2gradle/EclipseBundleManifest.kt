@@ -1,51 +1,22 @@
 package osgi2gradle
 
+import osgi2gradle.model.P2BundleReference
 import java.io.IOException
 import java.io.OutputStreamWriter
 import java.util.*
 import java.util.function.Consumer
-import java.util.jar.Manifest
-import java.util.regex.Pattern
 import java.util.stream.Collectors
-import java.util.stream.Stream
 
-private class P2BundleReference : Comparable<P2BundleReference?> {
-    var name: String? = null
-    var version: String? = null
+internal class EclipseBundleManifest(private val bundle: Bundle) {
 
     @Throws(IOException::class)
-    fun declareP2BundleCall(writer: OutputStreamWriter) {
-        writer.append("p2bundle('").append(name).append("'")
-        if (version != null) {
-            writer.append(", '").append(version).append("'")
-        }
-        writer.append(")")
-    }
-
-    override fun compareTo(p2BundleReference: P2BundleReference?): Int {
-        return name!!.compareTo(p2BundleReference!!.name!!)
-    }
-}
-
-internal class EclipseBundleManifest(private val bundleManifest: Manifest) {
-
-    @Throws(IOException::class)
-    fun declareArchiveOutputNames(project: EclipseBundleGradleProject,
-                                  projectsGradleWriter: OutputStreamWriter) {
-        var bundleSymbolicName = bundleManifest.mainAttributes.getValue("Bundle-SymbolicName")
-        if (bundleSymbolicName == null) {
-            bundleSymbolicName = project.gradleSubprojectName
-        }
-        bundleSymbolicName = bundleSymbolicName.trim { it <= ' ' }
-        val firstAttributeSemicolonIndex = bundleSymbolicName.indexOf(';')
-        if (firstAttributeSemicolonIndex > -1) {
-            bundleSymbolicName = bundleSymbolicName.substring(0, firstAttributeSemicolonIndex)
-        }
+    fun declareArchiveOutputNames(projectsGradleWriter: OutputStreamWriter) {
+        var bundleSymbolicName = bundle.symbolicName
         projectsGradleWriter
                 .append("\tjar.archiveBaseName = '")
                 .append(bundleSymbolicName)
                 .append("'\r\n")
-        val bundleVersion = bundleManifest.mainAttributes.getValue("Bundle-Version")
+        val bundleVersion = bundle.version
         projectsGradleWriter
                 .append("\tjar.archiveVersion = '")
                 .append((bundleVersion ?: "").trim { it <= ' ' })
@@ -70,32 +41,44 @@ internal class EclipseBundleManifest(private val bundleManifest: Manifest) {
         projectsGradleWriter.append("\t}\r\n")
     }
 
-    private fun collectProjectDependencies(): List<P2BundleReference> {
-        val bundlesListAttribute = bundleManifest.mainAttributes.getValue("Require-Bundle")
-        return parseManifestBundleReferences(bundlesListAttribute)
+    private fun collectProjectDependencies(availableProjects: List<EclipseBundleGradleProject>): List<P2BundleReference> {
+        return bundle.requiredBundles
+        /*val bundlesListAttribute = bundleManifest.mainAttributes.getValue("Require-Bundle")
+        val requiredBundles = parseManifestBundleReferences(bundlesListAttribute)
+
+        val importPackageAttribute = bundleManifest.mainAttributes.getValue("Import-Package")
+        val importPackages = Arrays.stream(importPackageAttribute?.split(",")?.toTypedArray() ?: emptyArray())
+                .map { obj: String -> obj.trim { it <= ' ' } }
+
+        importPackages.forEach { importPackage ->
+            val packageAsPath = Paths.get()
+            availableProjects.filter { prj ->
+                prj.
+            }
+        }*/
     }
 
     @Throws(IOException::class)
     private fun declareProjectImplementationDependencies(
             availableProjects: List<EclipseBundleGradleProject>,
             projectsGradleWriter: OutputStreamWriter) {
-        val referencedBundles = collectProjectDependencies()
-        findProjectIncludes(availableProjects, referencedBundles).forEach(Consumer { bundle: EclipseBundleGradleProject ->
+        val referencedBundles = collectProjectDependencies(availableProjects)
+        findProjectIncludes(availableProjects, referencedBundles).forEach(Consumer { referencedBundle: EclipseBundleGradleProject ->
             try {
                 projectsGradleWriter
                         .append("\t\t").append("implementation").append(" project(':")
-                        .append(bundle.gradleSubprojectName)
+                        .append(referencedBundle.gradleSubprojectName)
                         .append("')\r\n")
             } catch (e: IOException) {
                 throw RuntimeException(e)
             }
         })
         projectsGradleWriter.append("\r\n")
-        findNonProjectIncludes(availableProjects, referencedBundles).forEach(Consumer { bundle: P2BundleReference ->
+        findNonProjectIncludes(availableProjects, referencedBundles).forEach(Consumer { referencedBundle: P2BundleReference ->
             try {
                 projectsGradleWriter
                         .append("\t\t").append("implementation").append(" ")
-                bundle.declareP2BundleCall(projectsGradleWriter)
+                referencedBundle.declareP2BundleCall(projectsGradleWriter)
                 projectsGradleWriter.append("\r\n")
             } catch (e: IOException) {
                 throw RuntimeException(e)
@@ -105,8 +88,8 @@ internal class EclipseBundleManifest(private val bundleManifest: Manifest) {
     }
 
     private fun declareInlineJarImplementationDependencies(projectsGradleWriter: OutputStreamWriter) {
-        val includedEntries = extractJarsOnClasspath().collect(Collectors.joining("', '"))
-        if (!includedEntries.isEmpty()) {
+        val includedEntries = extractJarsOnClasspath().joinToString("', '")
+        if (includedEntries.isNotEmpty()) {
             try {
                 projectsGradleWriter
                         .append("\t\t").append("compileOnly files('")
@@ -118,36 +101,15 @@ internal class EclipseBundleManifest(private val bundleManifest: Manifest) {
         }
     }
 
-    private fun extractJarsOnClasspath(): Stream<String> {
-        val classPath = bundleManifest.mainAttributes.getValue("Bundle-ClassPath")
-        return Arrays.stream(classPath?.split(",")?.toTypedArray() ?: emptyArray())
-                .map { obj: String -> obj.trim { it <= ' ' } }
-                .filter { pathEntry: String -> pathEntry.toLowerCase().endsWith(".jar") }
+    private fun extractJarsOnClasspath(): List<String> {
+        return bundle.classPath.filter { pathEntry: String -> pathEntry.toLowerCase().endsWith(".jar") }
     }
 
     private fun hasNoDependency(): Boolean {
-        val requiredBundlesAttribute = bundleManifest.mainAttributes.getValue("Require-Bundle")
-        return (requiredBundlesAttribute == null || requiredBundlesAttribute.trim { it <= ' ' }.isEmpty()) &&
-                !extractJarsOnClasspath().findFirst().isPresent
+        return bundle.requiredBundles.isEmpty() && extractJarsOnClasspath().isEmpty()
     }
 
-    private fun parseManifestBundleReferences(bundlesListAttribute: String?): List<P2BundleReference> {
-        val matcher = bundlesListAttributeFormat.matcher(bundlesListAttribute ?: "")
-        val references: MutableList<P2BundleReference> = ArrayList()
-        var startIndex = 0
-        while (matcher.find(startIndex)) {
-            val p2BundleRef = P2BundleReference()
-            p2BundleRef.name = matcher.group(1)
-            var versionString = matcher.group(3)
-            if (versionString != null && versionString.startsWith("\"")) {
-                versionString = versionString.substring(1, versionString.length - 1)
-            }
-            p2BundleRef.version = versionString
-            references.add(p2BundleRef)
-            startIndex = matcher.end()
-        }
-        return references
-    }
+
 
     private fun findProjectIncludes(
             availableProjects: List<EclipseBundleGradleProject>,
@@ -177,10 +139,5 @@ internal class EclipseBundleManifest(private val bundleManifest: Manifest) {
                             }
                 }
                 .collect(Collectors.toList())
-    }
-
-    companion object {
-        private val bundlesListAttributeFormat = Pattern
-                .compile("([^;,]+)(;bundle-version=(\"[^\"]+\"|[^,;]+))?(;[\\w-]+:?=(\"[^\"]+\"|[^,;]+))*")
     }
 }

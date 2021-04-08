@@ -93,19 +93,19 @@ class Main {
                                    toGradleFile: Path) {
         FileOutputStream(toGradleFile.toFile(), true).use { projectsGradle ->
             OutputStreamWriter(projectsGradle).use { projectsGradleWriter ->
-                for (bundle in eclipseBundleGradleProjects) {
-                    bundle.declareProjectSignature(projectsGradleWriter)
-                    bundle.declareProjectSourceSets(projectsGradleWriter)
-                    bundle.readBundleManifest()?.also { manifest ->
-                        val bundleManifest = EclipseBundleManifest(manifest)
+                for (project in eclipseBundleGradleProjects) {
+                    project.declareProjectSignature(projectsGradleWriter)
+                    project.declareProjectSourceSets(projectsGradleWriter)
+                    project.readBundleManifest()?.parseBundle(project)?.also { bundle ->
+                        val bundleManifest = EclipseBundleManifest(bundle)
                         try {
-                            bundleManifest.declareArchiveOutputNames(bundle, projectsGradleWriter)
+                            bundleManifest.declareArchiveOutputNames(projectsGradleWriter)
                             bundleManifest.declareProjectDependencies(eclipseBundleGradleProjects, projectsGradleWriter)
                         } catch (e: IOException) {
                             throw RuntimeException(e)
                         }
                     }
-                    bundle.declareProjectEnd(projectsGradleWriter)
+                    project.declareProjectEnd(projectsGradleWriter)
                 }
             }
         }
