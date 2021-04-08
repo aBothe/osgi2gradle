@@ -1,5 +1,6 @@
 package osgi2gradle
 
+import osgi2gradle.projectsgradle.*
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.OutputStreamWriter
@@ -89,24 +90,11 @@ class Main {
     }
 
     @Throws(Exception::class)
-    private fun makeProjectsGradle(eclipseBundleGradleProjects: List<EclipseBundleGradleProject>,
+    private fun makeProjectsGradle(projects: List<EclipseBundleGradleProject>,
                                    toGradleFile: Path) {
         FileOutputStream(toGradleFile.toFile(), true).use { projectsGradle ->
             OutputStreamWriter(projectsGradle).use { projectsGradleWriter ->
-                for (project in eclipseBundleGradleProjects) {
-                    project.declareProjectSignature(projectsGradleWriter)
-                    project.declareProjectSourceSets(projectsGradleWriter)
-                    project.readManifest()?.parseBundle(project)?.also { bundle ->
-                        val bundleManifest = EclipseBundleManifest(bundle)
-                        try {
-                            bundleManifest.declareArchiveOutputNames(projectsGradleWriter)
-                            bundleManifest.declareProjectDependencies(eclipseBundleGradleProjects, projectsGradleWriter)
-                        } catch (e: IOException) {
-                            throw RuntimeException(e)
-                        }
-                    }
-                    project.declareProjectEnd(projectsGradleWriter)
-                }
+                projects.forEach { it.declareGradleProject(projectsGradleWriter, projects) }
             }
         }
     }
