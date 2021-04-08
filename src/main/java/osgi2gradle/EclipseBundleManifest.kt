@@ -70,12 +70,16 @@ internal class EclipseBundleManifest(private val bundleManifest: Manifest) {
         projectsGradleWriter.append("\t}\r\n")
     }
 
+    private fun collectProjectDependencies(): List<P2BundleReference> {
+        val bundlesListAttribute = bundleManifest.mainAttributes.getValue("Require-Bundle")
+        return parseManifestBundleReferences(bundlesListAttribute)
+    }
+
     @Throws(IOException::class)
     private fun declareProjectImplementationDependencies(
             availableProjects: List<EclipseBundleGradleProject>,
             projectsGradleWriter: OutputStreamWriter) {
-        val bundlesListAttribute = bundleManifest.mainAttributes.getValue("Require-Bundle")
-        val referencedBundles = parseManifestBundleReferences(bundlesListAttribute)
+        val referencedBundles = collectProjectDependencies()
         findProjectIncludes(availableProjects, referencedBundles).forEach(Consumer { bundle: EclipseBundleGradleProject ->
             try {
                 projectsGradleWriter
