@@ -22,12 +22,12 @@ fun Manifest.parseBundle(project: EclipseBundleGradleProject): Bundle {
     val requiredBundles = parseManifestBundleReferences(bundlesListAttribute)
 
     val importPackageAttribute = this.mainAttributes.getValue("Import-Package")
-    val importPackages = (importPackageAttribute?.split(",")?.toTypedArray() ?: emptyArray())
+    val importPackages = (importPackageAttribute?.split(",") ?: emptyList())
             .map { obj: String -> obj.trim { it <= ' ' } }
             .toSet()
 
     val classPath = this.mainAttributes.getValue("Bundle-ClassPath")
-    val classPathItems = (classPath?.split(",")?.toTypedArray() ?: emptyArray())
+    val classPathItems = (classPath?.split(",") ?: emptyList())
             .map { obj: String -> obj.trim { it <= ' ' } }
 
     return Bundle(bundleSymbolicName, bundleVersion, requiredBundles, importPackages, classPathItems)

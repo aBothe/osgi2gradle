@@ -8,13 +8,7 @@ import java.io.OutputStreamWriter
 fun EclipseBundleGradleProject.declareGradleProject(w: OutputStreamWriter, projects: List<EclipseBundleGradleProject>) {
     declareProjectSignature(w)
     declareProjectSourceSets(w)
-    readManifest()?.parseBundle(this)?.also { bundle ->
-        try {
-            bundle.declareArchiveOutputNames(w)
-            bundle.declareProjectDependencies(projects, w)
-        } catch (e: IOException) {
-            throw RuntimeException(e)
-        }
-    }
+    bundle?.declareArchiveOutputNames(w)
+    declareProjectDependencies(projects, w)
     declareProjectEnd(w)
 }

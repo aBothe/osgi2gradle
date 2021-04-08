@@ -124,27 +124,17 @@ class Main {
         val devProperties = Properties()
         devProperties.setProperty("@ignoredot@", "true")
         subProjects.stream()
-                .map { obj: EclipseBundleGradleProject -> obj.readManifest() }
-                .filter { obj: Manifest? -> obj != null }
-                .map { obj: Manifest? -> obj!! }
+                .filter { it.bundle != null }
+                .map { it.bundle!! }
                 .forEach { bundleManifest ->
-                    var symbolicBundleName: String? = bundleManifest
-                            .mainAttributes.getValue("Bundle-SymbolicName")
-                    if (symbolicBundleName == null || symbolicBundleName.trim { it <= ' ' }.also { symbolicBundleName = it }.isEmpty()) {
+                    val symbolicBundleName: String = bundleManifest.symbolicName
+                    if (symbolicBundleName.isEmpty()) {
                         return@forEach
                     }
-                    val firstAttributeIndex = symbolicBundleName!!.indexOf(';')
-                    if (firstAttributeIndex > -1) {
-                        symbolicBundleName = symbolicBundleName!!.substring(0, firstAttributeIndex)
-                    }
-                    val classPath: String? = bundleManifest.mainAttributes.getValue("Bundle-ClassPath")
                     val cleanedClassPath: MutableList<String> = ArrayList()
                     cleanedClassPath.add("build/classes/java/main")
                     cleanedClassPath.add("build/resources/main")
-                    Arrays.stream(classPath?.split(",")?.toTypedArray() ?: emptyArray())
-                            .map { obj: String -> obj.trim { it <= ' ' } }
-                            .filter { path: String -> "." != path }
-                            .forEach { e: String -> cleanedClassPath.add(e) }
+                    cleanedClassPath.addAll(bundleManifest.classPath.filter { path: String -> "." != path })
                     devProperties.setProperty(symbolicBundleName, java.lang.String.join(",", cleanedClassPath))
                 }
         val devPropertiesFile = devPropertiesPath.toFile()
