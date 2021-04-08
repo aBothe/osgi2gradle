@@ -9,29 +9,42 @@ import java.util.*
 import java.util.function.Consumer
 import java.util.stream.Collectors
 
-fun Bundle.declareProjectDependencies(availableProjects: List<EclipseBundleGradleProject>,
+fun EclipseBundleGradleProject.declareProjectDependencies(availableProjects: List<EclipseBundleGradleProject>,
                                       projectsGradleWriter: OutputStreamWriter) {
-    if (hasNoDependency()) {
+    if (bundle == null || bundle.hasNoDependency()) {
         return
     }
     projectsGradleWriter.append("\r\n\tdependencies {\r\n")
     declareProjectImplementationDependencies(availableProjects, projectsGradleWriter)
-    declareInlineJarImplementationDependencies(projectsGradleWriter)
+    bundle.declareInlineJarImplementationDependencies(projectsGradleWriter)
     projectsGradleWriter.append("\t}\r\n")
 }
 
-private fun Bundle.collectProjectDependencies(availableProjects: List<EclipseBundleGradleProject>): List<P2BundleReference> {
-    return requiredBundles
-    /*importedPackages.forEach { importPackage ->
-        val packageAsPath = Paths.get()
-        availableProjects.filter { prj ->
-            prj.
+private fun EclipseBundleGradleProject.collectProjectDependencies(availableProjects: List<EclipseBundleGradleProject>): List<P2BundleReference> {
+    val bundles = mutableListOf<P2BundleReference>()
+    bundles.addAll(bundle!!.requiredBundles)
+
+    bundle.importedPackages.forEach { importPackage ->
+        availableProjects.forEach { otherProject ->
+            if (otherProject.bundle != null && importPackage.contains(otherProject.bundle.symbolicName)) {
+                bundles.add(P2BundleReference().also {
+                    it.name = otherProject.bundle.symbolicName
+                    it.version = otherProject.bundle.version
+                })
+            }
         }
-    }*/
+    }
+
+    return bundles.makeReferencesUnique()
 }
 
+private fun List<P2BundleReference>.makeReferencesUnique(): List<P2BundleReference> =
+        this.groupBy { it.name }.flatMap {
+            it.value.sortedByDescending { reference -> reference.version }
+        }.distinctBy { it.name }
+
 @Throws(IOException::class)
-private fun Bundle.declareProjectImplementationDependencies(
+private fun EclipseBundleGradleProject.declareProjectImplementationDependencies(
         availableProjects: List<EclipseBundleGradleProject>,
         projectsGradleWriter: OutputStreamWriter) {
     val referencedBundles = collectProjectDependencies(availableProjects)
@@ -78,7 +91,9 @@ private fun Bundle.extractJarsOnClasspath(): List<String> {
 }
 
 private fun Bundle.hasNoDependency(): Boolean {
-    return this.requiredBundles.isEmpty() && extractJarsOnClasspath().isEmpty()
+    return this.requiredBundles.isEmpty()
+            && this.importedPackages.isEmpty()
+            && extractJarsOnClasspath().isEmpty()
 }
 
 
