@@ -96,7 +96,7 @@ class Main {
                 for (project in eclipseBundleGradleProjects) {
                     project.declareProjectSignature(projectsGradleWriter)
                     project.declareProjectSourceSets(projectsGradleWriter)
-                    project.readBundleManifest()?.parseBundle(project)?.also { bundle ->
+                    project.readManifest()?.parseBundle(project)?.also { bundle ->
                         val bundleManifest = EclipseBundleManifest(bundle)
                         try {
                             bundleManifest.declareArchiveOutputNames(projectsGradleWriter)
@@ -136,7 +136,7 @@ class Main {
         val devProperties = Properties()
         devProperties.setProperty("@ignoredot@", "true")
         subProjects.stream()
-                .map { obj: EclipseBundleGradleProject -> obj.readBundleManifest() }
+                .map { obj: EclipseBundleGradleProject -> obj.readManifest() }
                 .filter { obj: Manifest? -> obj != null }
                 .map { obj: Manifest? -> obj!! }
                 .forEach { bundleManifest ->

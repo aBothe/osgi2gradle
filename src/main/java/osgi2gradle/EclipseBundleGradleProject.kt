@@ -72,7 +72,7 @@ class EclipseBundleGradleProject(
         return bundleProperties
     }
 
-    fun readBundleManifest(): Manifest? {
+    fun readManifest(): Manifest? {
         val manifestPath = buildPropertiesPath.parent.resolve("META-INF").resolve("MANIFEST.MF")
         if (!manifestPath.toFile().exists()) {
             return null
