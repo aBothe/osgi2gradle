@@ -4,7 +4,7 @@ import java.io.IOException
 import java.io.OutputStreamWriter
 
 class P2BundleReference : Comparable<P2BundleReference?> {
-    var name: String? = null
+    var name: String = ""
     var version: String? = null
 
     @Throws(IOException::class)
@@ -17,6 +17,6 @@ class P2BundleReference : Comparable<P2BundleReference?> {
     }
 
     override fun compareTo(p2BundleReference: P2BundleReference?): Int {
-        return name!!.compareTo(p2BundleReference!!.name!!)
+        return name.compareTo(p2BundleReference!!.name)
     }
 }

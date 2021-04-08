@@ -1,5 +1,6 @@
 package osgi2gradle
 
+import osgi2gradle.projectsgradle.readBundleProperties
 import java.io.FileInputStream
 import java.nio.file.Path
 import java.util.jar.Manifest
@@ -10,8 +11,11 @@ class EclipseBundleGradleProject(
         val relativePath: Path,
         val gradleSubprojectName: String) : Comparable<EclipseBundleGradleProject?> {
 
+    val basePath: Path = buildPropertiesPath.parent.toAbsolutePath()
+    val bundleProperties = readBundleProperties()
+
     fun readManifest(): Manifest? {
-        val manifestPath = buildPropertiesPath.parent.resolve("META-INF").resolve("MANIFEST.MF")
+        val manifestPath = basePath.resolve("META-INF").resolve("MANIFEST.MF")
         if (!manifestPath.toFile().exists()) {
             return null
         }

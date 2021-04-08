@@ -22,14 +22,7 @@ fun Bundle.declareProjectDependencies(availableProjects: List<EclipseBundleGradl
 
 private fun Bundle.collectProjectDependencies(availableProjects: List<EclipseBundleGradleProject>): List<P2BundleReference> {
     return requiredBundles
-    /*val bundlesListAttribute = bundleManifest.mainAttributes.getValue("Require-Bundle")
-    val requiredBundles = parseManifestBundleReferences(bundlesListAttribute)
-
-    val importPackageAttribute = bundleManifest.mainAttributes.getValue("Import-Package")
-    val importPackages = Arrays.stream(importPackageAttribute?.split(",")?.toTypedArray() ?: emptyArray())
-            .map { obj: String -> obj.trim { it <= ' ' } }
-
-    importPackages.forEach { importPackage ->
+    /*importedPackages.forEach { importPackage ->
         val packageAsPath = Paths.get()
         availableProjects.filter { prj ->
             prj.
