@@ -72,9 +72,10 @@ What's implemented:
   * Required-Bundle
   * Bundle-Classpath
   * Bundle-SymbolicName
+  * Import-Package
+  * Export-Package + deriving dependency relations from imports&exports
 
 What's not implemented:
-* Recognizing Imported/Exported packages
 * Bundle versions as part of Required-Bundle definitions
 
 ## Contribute
