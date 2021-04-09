@@ -26,7 +26,7 @@ private fun EclipseBundleGradleProject.collectProjectDependencies(availableProje
 
     bundle.importedPackages.forEach { importPackage ->
         availableProjects.forEach { otherProject ->
-            if (otherProject.bundle != null && importPackage.contains(otherProject.bundle.symbolicName)) {
+            if (otherProject.bundle != null && otherProject.bundle.exportedPackages.contains(importPackage)) {
                 bundles.add(P2BundleReference().also {
                     it.name = otherProject.bundle.symbolicName
                     it.version = otherProject.bundle.version

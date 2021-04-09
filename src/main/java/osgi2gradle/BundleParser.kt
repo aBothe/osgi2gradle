@@ -2,6 +2,7 @@ package osgi2gradle
 
 import osgi2gradle.model.P2BundleReference
 import java.util.*
+import java.util.jar.Attributes
 import java.util.jar.Manifest
 import java.util.regex.Pattern
 
@@ -21,17 +22,16 @@ fun Manifest.parseBundle(project: EclipseBundleGradleProject): Bundle {
     val bundlesListAttribute = this.mainAttributes.getValue("Require-Bundle")
     val requiredBundles = parseManifestBundleReferences(bundlesListAttribute)
 
-    val importPackageAttribute = this.mainAttributes.getValue("Import-Package")
-    val importPackages = (importPackageAttribute?.split(",") ?: emptyList())
-            .map { obj: String -> obj.trim { it <= ' ' } }
-            .toSet()
+    val importPackages = this.mainAttributes.getCommaSplitValue("Import-Package").toSet()
+    val exportPackages = this.mainAttributes.getCommaSplitValue("Export-Package").toSet()
 
-    val classPath = this.mainAttributes.getValue("Bundle-ClassPath")
-    val classPathItems = (classPath?.split(",") ?: emptyList())
-            .map { obj: String -> obj.trim { it <= ' ' } }
+    val classPathItems = this.mainAttributes.getCommaSplitValue("Bundle-ClassPath")
 
-    return Bundle(bundleSymbolicName, bundleVersion, requiredBundles, importPackages, classPathItems)
+    return Bundle(bundleSymbolicName, bundleVersion, requiredBundles, importPackages, exportPackages, classPathItems)
 }
+
+private fun Attributes.getCommaSplitValue(name: String) = (getValue(name)?.split(",") ?: emptyList())
+        .map { obj: String -> obj.trim { it <= ' ' } }
 
 private fun parseManifestBundleReferences(bundlesListAttribute: String?): List<P2BundleReference> {
     val matcher = bundlesListAttributeFormat.matcher(bundlesListAttribute ?: "")

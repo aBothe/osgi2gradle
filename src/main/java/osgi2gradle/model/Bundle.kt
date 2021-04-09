@@ -7,5 +7,6 @@ data class Bundle(
         val version: String,
         val requiredBundles: List<P2BundleReference>,
         val importedPackages: Set<String>,
+        val exportedPackages: Set<String>,
         val classPath: List<String>
 )
